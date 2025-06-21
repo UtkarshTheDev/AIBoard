@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI vs AI Chess Platform
+
+A Next.js-based chess platform for AI vs AI gameplay, with Stockfish analysis integration.
+
+## Features
+
+- Interactive chessboard using react-chessboard
+- Chess game logic using chess.js
+- Move history tracking and navigation
+- Timer functionality with pause/resume
+- Stockfish integration for position analysis and best move suggestions
+- Game status detection (check, checkmate, draw)
+- Ready for Gemini API integration
+
+## Tech Stack
+
+- Next.js with App Router
+- TypeScript
+- chess.js for game logic
+- react-chessboard for UI
+- Stockfish for analysis (server-side)
+- Zustand for state management
+- Shadcn/UI for components
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ or Bun
+- npm, yarn, or bun
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Download Stockfish:
+   - Go to [Stockfish Downloads](https://stockfishchess.org/download/)
+   - Download the appropriate version for your operating system
+   - Create a `bin` folder in the project root
+   - Place the Stockfish executable in the `bin` folder
+   - For Windows, name it `stockfish.exe`
+   - For macOS/Linux, name it `stockfish` and make it executable with `chmod +x bin/stockfish`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Run the development server:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+bun run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-To learn more about Next.js, take a look at the following resources:
+## How to Use
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Click "Make AI Move" to have Stockfish suggest a move
+2. Use the timer controls to start, pause, or reset the timer
+3. Navigate through move history using Previous/Next buttons
+4. Analyze positions with Stockfish
+5. Reset the game at any time
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stockfish Integration
 
-## Deploy on Vercel
+The application uses Stockfish in two ways:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Server-side API**: The main integration runs Stockfish as a child process on the server via a Next.js API route. This is more reliable and works across all platforms.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Client-side Fallback**: For development purposes, there's also a client-side integration that runs Stockfish in the browser. This is less reliable and may not work in all browsers.
+
+## Integrating with Gemini API
+
+To integrate with Gemini API for move generation:
+
+1. Create your own API service in `src/lib/gemini-service.ts`
+2. Update the `getAIMove` function in `ChessBoard.tsx` to use your Gemini API service
+3. Implement logic to alternate between Stockfish and Gemini for moves
+
+## Deployment Considerations
+
+When deploying to platforms like Vercel, you'll need to use a different hosting solution for the Stockfish API since Vercel doesn't support running binaries. Options include:
+
+- Deploy the Stockfish API to a separate service like Render, Railway, or DigitalOcean
+- Use a serverless function that supports binary execution
+- Use a WebAssembly version of Stockfish for client-side only deployments
+
+## License
+
+MIT
