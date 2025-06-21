@@ -1,6 +1,6 @@
 "use client"
 import React, { useEffect, useState, useRef } from 'react';
-import { useChessStore } from '@/lib/store/chess-store';
+import { MoveInput, useChessStore } from '@/lib/store/chess-store';
 import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
 import { toast } from 'sonner';
 
@@ -77,7 +77,7 @@ export const AIMatch = () => {
               currentPosition,
               (bestMove) => {
                 // Make the move
-                const moveResult = makeMove(bestMove);
+                const moveResult = makeMove(bestMove as unknown as MoveInput);
                 
                 // Check if move was successful
                 if (!moveResult) {

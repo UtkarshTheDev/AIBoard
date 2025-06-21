@@ -45,7 +45,7 @@ export const ChessBoard = () => {
     try {
       await stockfishService.getBestMove(currentPosition, (bestMove) => {
         if (bestMove) {
-          makeMove(bestMove);
+          makeMove(bestMove as unknown as MoveInput);
         }
       });
     } catch (error) {

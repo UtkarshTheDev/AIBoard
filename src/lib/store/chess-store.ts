@@ -1,6 +1,6 @@
 "use client"
 import { create } from 'zustand';
-import { Chess } from 'chess.js';
+import { Chess, Square } from 'chess.js';
 import { toast } from 'sonner';
 
 export type PlayerType = 'human' | 'ai';
@@ -14,7 +14,11 @@ export interface Player {
 
 // For backward compatibility
 export type PlayerSettings = Player;
-export type MoveInput = string;
+export type MoveInput = {
+  from: Square;
+  to: Square;
+  promotion?: string;
+};
 
 interface ChessState {
   // Game state
@@ -44,7 +48,7 @@ interface ChessState {
   
   // Actions
   newGame: () => void;
-  makeMove: (move: string) => boolean;
+  makeMove: (move: MoveInput) => boolean;
   goToMove: (index: number) => void;
   undoMove: () => void;
   redoMove: () => void;
