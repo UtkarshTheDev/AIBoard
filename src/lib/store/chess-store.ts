@@ -1,167 +1,330 @@
+"use client"
 import { create } from 'zustand';
-import { Chess, Move, Square } from 'chess.js';
-import { Piece } from 'react-chessboard/dist/chessboard/types';
+import { Chess } from 'chess.js';
+import { toast } from 'sonner';
 
-export type MoveHistory = {
-  fen: string;
-  move: string;
-  evaluation?: number;
-};
+export type PlayerType = 'human' | 'ai';
 
-// Define a type for move input that can be either a string or an object
-export type MoveInput = string | {
-  from: Square;
-  to: Square;
-  promotion?: 'n' | 'b' | 'r' | 'q';
-};
+export interface Player {
+  type: PlayerType;
+  name: string;
+  providerId?: string;
+  modelId?: string;
+}
+
+// For backward compatibility
+export type PlayerSettings = Player;
+export type MoveInput = string;
 
 interface ChessState {
   // Game state
   game: Chess;
   currentPosition: string;
-  history: MoveHistory[];
+  history: string[];
   historyIndex: number;
   isGameOver: boolean;
-  gameResult: string;
+  result: string | null;
+  
+  // Players
+  whitePlayer: Player;
+  blackPlayer: Player;
+  
+  // AI match settings
+  isAIMatch: boolean;
+  isAITurn: boolean;
+  isAIThinking: boolean;
   
   // Timer state
   timer: number;
   defaultTime: number;
   isTimerRunning: boolean;
   
-  // Functions
-  makeMove: (move: MoveInput) => boolean;
+  // Evaluation data
+  evaluations: (number | null)[];
+  
+  // Actions
+  newGame: () => void;
+  makeMove: (move: string) => boolean;
   goToMove: (index: number) => void;
-  resetGame: () => void;
+  undoMove: () => void;
+  redoMove: () => void;
+  updateEvaluation: (index: number, evaluation: number) => void;
+  setWhitePlayer: (player: Player) => void;
+  setBlackPlayer: (player: Player) => void;
+  setIsAIMatch: (isAIMatch: boolean) => void;
+  setIsAIThinking: (isThinking: boolean) => void;
+  
+  // Timer functions
   startTimer: () => void;
   pauseTimer: () => void;
   resetTimer: () => void;
   decrementTimer: () => void;
-  updateEvaluation: (index: number, evaluation: number) => void;
+  
+  // Legacy functions for backward compatibility
+  resetGame: () => void;
+  setPlayerSettings: (color: 'white' | 'black', settings: Player) => void;
+  startAIMatch: () => void;
+  stopAIMatch: () => void;
 }
 
 export const useChessStore = create<ChessState>((set, get) => ({
-  // Initial game state
+  // Initialize game state
   game: new Chess(),
-  currentPosition: new Chess().fen(),
-  history: [{ fen: new Chess().fen(), move: 'Initial position' }],
+  currentPosition: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  history: ['rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'],
   historyIndex: 0,
   isGameOver: false,
-  gameResult: '',
+  result: null,
   
-  // Initial timer state
+  // Initialize players
+  whitePlayer: { type: 'human', name: 'Human' },
+  blackPlayer: { type: 'human', name: 'Human' },
+  
+  // AI match settings
+  isAIMatch: false,
+  isAITurn: false,
+  isAIThinking: false,
+  
+  // Timer state
   timer: 60,
   defaultTime: 60,
   isTimerRunning: false,
   
-  // Game functions
+  // Initialize evaluations
+  evaluations: [null],
+  
+  // Start a new game
+  newGame: () => {
+    const game = new Chess();
+    const fen = game.fen();
+    
+    set({
+      game,
+      currentPosition: fen,
+      history: [fen],
+      historyIndex: 0,
+      isGameOver: false,
+      result: null,
+      evaluations: [null],
+      isAIThinking: false,
+      timer: get().defaultTime,
+      isTimerRunning: false
+    });
+    
+    // Check if it's an AI's turn at the start of the game
+    const state = get();
+    if (state.isAIMatch && state.whitePlayer.type === 'ai') {
+      set({ isAITurn: true });
+    } else {
+      set({ isAITurn: false });
+    }
+  },
+  
+  // Make a move
   makeMove: (move) => {
-    const { game, history, historyIndex } = get();
+    const { game, history, historyIndex, whitePlayer, blackPlayer, isAIMatch } = get();
     
     try {
-      const result = game.move(move);
-      if (!result) return false;
+      // Try to make the move
+      const moveResult = game.move(move);
       
+      // Get the new position
       const newPosition = game.fen();
-      const newHistory = history.slice(0, historyIndex + 1);
       
-      newHistory.push({
-        fen: newPosition,
-        move: `${result.color === 'w' ? 'White' : 'Black'} ${result.san}`,
-      });
-      
+      // Check if the game is over
       const isGameOver = game.isGameOver();
-      let gameResult = '';
       
+      // Determine the result if the game is over
+      let result = null;
       if (isGameOver) {
         if (game.isCheckmate()) {
-          gameResult = `Checkmate! ${game.turn() === 'w' ? 'Black' : 'White'} wins.`;
+          result = game.turn() === 'w' ? 'Black wins by checkmate' : 'White wins by checkmate';
         } else if (game.isDraw()) {
           if (game.isStalemate()) {
-            gameResult = 'Draw by stalemate.';
+            result = 'Draw by stalemate';
           } else if (game.isThreefoldRepetition()) {
-            gameResult = 'Draw by threefold repetition.';
+            result = 'Draw by threefold repetition';
           } else if (game.isInsufficientMaterial()) {
-            gameResult = 'Draw by insufficient material.';
+            result = 'Draw by insufficient material';
           } else {
-            gameResult = 'Draw.';
+            result = 'Draw';
           }
         }
       }
       
+      // Update history if we're at the latest move
+      let newHistory = [...history];
+      let newEvaluations = [...get().evaluations];
+      
+      if (historyIndex === history.length - 1) {
+        // We're at the latest move, so add the new position to history
+        newHistory.push(newPosition);
+        newEvaluations.push(null);
+      } else {
+        // We're in the middle of history, so truncate and add the new position
+        newHistory = newHistory.slice(0, historyIndex + 1);
+        newHistory.push(newPosition);
+        
+        newEvaluations = newEvaluations.slice(0, historyIndex + 1);
+        newEvaluations.push(null);
+      }
+      
+      // Determine if it's an AI's turn after this move
+      const currentTurn = game.turn() === 'w' ? 'white' : 'black';
+      const currentPlayer = currentTurn === 'white' ? whitePlayer : blackPlayer;
+      const isAITurn = isAIMatch && currentPlayer.type === 'ai' && !isGameOver;
+      
+      // Update the state
       set({
+        game,
         currentPosition: newPosition,
         history: newHistory,
-        historyIndex: historyIndex + 1,
+        historyIndex: newHistory.length - 1,
         isGameOver,
-        gameResult,
-        timer: get().defaultTime, // Reset timer after move
+        result,
+        evaluations: newEvaluations,
+        isAITurn,
+        timer: get().defaultTime // Reset timer after move
       });
+      
+      // Show toast notification for checkmate or draw
+      if (isGameOver && typeof window !== 'undefined') {
+        toast.info(result || 'Game over');
+      }
       
       return true;
     } catch (error) {
-      console.error('Invalid move:', error);
+      console.error('Invalid move:', move, error);
       return false;
     }
   },
   
+  // Go to a specific move in history
   goToMove: (index) => {
     const { history } = get();
+    
     if (index >= 0 && index < history.length) {
-      const gameCopy = new Chess();
-      gameCopy.load(history[index].fen);
+      // Create a new game instance and set it to the position at the given index
+      const game = new Chess();
+      game.load(history[index]);
       
+      // Update the state
       set({
-        game: gameCopy,
-        currentPosition: history[index].fen,
+        game,
+        currentPosition: history[index],
         historyIndex: index,
-        isGameOver: gameCopy.isGameOver(),
-        gameResult: '',
+        isAITurn: false, // Disable AI when navigating through history
+        isAIThinking: false // Reset AI thinking state
       });
     }
   },
   
-  resetGame: () => {
-    const newGame = new Chess();
-    set({
-      game: newGame,
-      currentPosition: newGame.fen(),
-      history: [{ fen: newGame.fen(), move: 'Initial position' }],
-      historyIndex: 0,
-      isGameOver: false,
-      gameResult: '',
-      timer: get().defaultTime,
-      isTimerRunning: false,
+  // Undo a move
+  undoMove: () => {
+    const { historyIndex } = get();
+    
+    if (historyIndex > 0) {
+      get().goToMove(historyIndex - 1);
+    }
+  },
+  
+  // Redo a move
+  redoMove: () => {
+    const { historyIndex, history } = get();
+    
+    if (historyIndex < history.length - 1) {
+      get().goToMove(historyIndex + 1);
+    }
+  },
+  
+  // Update evaluation for a move
+  updateEvaluation: (index, evaluation) => {
+    const { evaluations } = get();
+    
+    if (index >= 0 && index < evaluations.length) {
+      const newEvaluations = [...evaluations];
+      newEvaluations[index] = evaluation;
+      
+      set({ evaluations: newEvaluations });
+    }
+  },
+  
+  // Set white player
+  setWhitePlayer: (player) => {
+    set({ whitePlayer: player });
+  },
+  
+  // Set black player
+  setBlackPlayer: (player) => {
+    set({ blackPlayer: player });
+  },
+  
+  // Set AI match
+  setIsAIMatch: (isAIMatch) => {
+    const { game, whitePlayer, blackPlayer } = get();
+    
+    // Determine if it's an AI's turn
+    const currentTurn = game.turn() === 'w' ? 'white' : 'black';
+    const currentPlayer = currentTurn === 'white' ? whitePlayer : blackPlayer;
+    const isAITurn = isAIMatch && currentPlayer.type === 'ai' && !game.isGameOver();
+    
+    set({ 
+      isAIMatch,
+      isAITurn,
+      isAIThinking: false // Reset AI thinking state
     });
   },
   
-  // Timer functions
-  startTimer: () => set({ isTimerRunning: true }),
-  pauseTimer: () => set({ isTimerRunning: false }),
+  // Set AI thinking state
+  setIsAIThinking: (isThinking) => {
+    set({ isAIThinking: isThinking });
+  },
   
-  resetTimer: () => set({ timer: get().defaultTime }),
+  // Timer functions
+  startTimer: () => {
+    set({ isTimerRunning: true });
+  },
+  
+  pauseTimer: () => {
+    set({ isTimerRunning: false });
+  },
+  
+  resetTimer: () => {
+    set({ timer: get().defaultTime, isTimerRunning: false });
+  },
   
   decrementTimer: () => {
-    const { timer, isTimerRunning, isGameOver } = get();
-    if (isTimerRunning && !isGameOver && timer > 0) {
+    const { timer, isTimerRunning } = get();
+    
+    if (isTimerRunning && timer > 0) {
       set({ timer: timer - 1 });
-    } else if (timer === 0 && isTimerRunning) {
-      // Time's up logic
+    } else if (isTimerRunning && timer === 0) {
       set({
         isTimerRunning: false,
         isGameOver: true,
-        gameResult: `Time's up! ${get().game.turn() === 'w' ? 'Black' : 'White'} wins.`,
+        result: `Time's up! ${get().game.turn() === 'w' ? 'Black' : 'White'} wins.`,
       });
     }
   },
   
-  // Stockfish evaluation update
-  updateEvaluation: (index, evaluation) => {
-    const { history } = get();
-    const newHistory = [...history];
-    if (newHistory[index]) {
-      newHistory[index] = { ...newHistory[index], evaluation };
-      set({ history: newHistory });
+  // Legacy functions for backward compatibility
+  resetGame: () => {
+    get().newGame();
+  },
+  
+  setPlayerSettings: (color, settings) => {
+    if (color === 'white') {
+      get().setWhitePlayer(settings);
+    } else {
+      get().setBlackPlayer(settings);
     }
   },
+  
+  startAIMatch: () => {
+    get().setIsAIMatch(true);
+  },
+  
+  stopAIMatch: () => {
+    get().setIsAIMatch(false);
+  }
 })); 

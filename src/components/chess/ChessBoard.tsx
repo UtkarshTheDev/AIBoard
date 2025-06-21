@@ -7,8 +7,11 @@ import { ChessTimer } from './ChessTimer';
 import { MoveHistory } from './MoveHistory';
 import { GameStatus } from './GameStatus';
 import { StockfishAnalysis } from './StockfishAnalysis';
+import { AIPlayerConfig } from './AIPlayerConfig';
+import { AIModelManager } from './AIModelManager';
+import { AIMatch } from './AIMatch';
 import { Button } from '@/components/ui/button';
-import { PlayIcon } from 'lucide-react';
+import { PlayIcon, Settings } from 'lucide-react';
 import { Square } from 'chess.js';
 
 // Define types for square styles
@@ -181,55 +184,84 @@ export const ChessBoard = () => {
     });
   };
 
+  // AI match controller (no UI, just logic)
+  const [showSettings, setShowSettings] = useState(false);
+  
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto">
-      {/* Left column - Chessboard and controls */}
-      <div className="flex flex-col gap-4 flex-1">
-        <div className="w-full max-w-md mx-auto">
-          <Chessboard 
-            position={currentPosition}
-            boardWidth={400}
-            areArrowsAllowed={true}
-            onSquareClick={onSquareClick}
-            onPieceDrop={onDrop}
-            onSquareRightClick={onSquareRightClick}
-            customSquareStyles={{
-              ...optionSquares,
-              ...rightClickedSquares
-            }}
-            customBoardStyle={{
-              borderRadius: '4px',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
-            }}
-          />
-        </div>
-        
-        <div className="flex justify-center">
-          <Button
-            onClick={handleAIMove}
-            disabled={isGameOver || !isStockfishReady}
-            className="mt-2"
-          >
-            <PlayIcon className="w-4 h-4 mr-1" />
-            {isCheckingStockfish 
-              ? 'Checking Stockfish...' 
-              : !isStockfishReady 
-                ? 'Stockfish not available' 
-                : 'Make AI Move'}
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <ChessTimer />
-          <GameStatus />
-        </div>
-      </div>
+    <>
+      {/* AI Match controller (no UI) */}
+      <AIMatch />
       
-      {/* Right column - History and Analysis */}
-      <div className="flex flex-col gap-4 w-full md:w-80">
-        <MoveHistory />
-        <StockfishAnalysis />
+      <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto">
+        {/* Left column - Chessboard and controls */}
+        <div className="flex flex-col gap-4 flex-1">
+          <div className="w-full max-w-md mx-auto">
+            <Chessboard 
+              position={currentPosition}
+              boardWidth={400}
+              areArrowsAllowed={true}
+              onSquareClick={onSquareClick}
+              onPieceDrop={onDrop}
+              onSquareRightClick={onSquareRightClick}
+              customSquareStyles={{
+                ...optionSquares,
+                ...rightClickedSquares
+              }}
+              customBoardStyle={{
+                borderRadius: '4px',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+              }}
+            />
+          </div>
+          
+          <div className="flex justify-center gap-2">
+            <Button
+              onClick={handleAIMove}
+              disabled={isGameOver || !isStockfishReady}
+              className="mt-2"
+            >
+              <PlayIcon className="w-4 h-4 mr-1" />
+              {isCheckingStockfish 
+                ? 'Checking Stockfish...' 
+                : !isStockfishReady 
+                  ? 'Stockfish not available' 
+                  : 'Make AI Move'}
+            </Button>
+            
+            <Button
+              onClick={() => setShowSettings(!showSettings)}
+              variant="outline"
+              className="mt-2"
+            >
+              <Settings className="w-4 h-4 mr-1" />
+              AI Settings
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <ChessTimer />
+            <GameStatus />
+          </div>
+          
+          {/* AI Settings */}
+          {showSettings && (
+            <div className="mt-4">
+              <AIPlayerConfig />
+            </div>
+          )}
+        </div>
+        
+        {/* Right column - History and Analysis */}
+        <div className="flex flex-col gap-4 w-full md:w-80">
+          <MoveHistory />
+          <StockfishAnalysis />
+          
+          {/* AI Model Manager (only show in settings mode) */}
+          {showSettings && (
+            <AIModelManager />
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
