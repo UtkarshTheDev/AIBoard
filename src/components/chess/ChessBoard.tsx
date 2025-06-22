@@ -2,6 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { useChessStore, MoveInput } from '@/lib/store/chess-store';
+import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
 
 import { ChessTimer } from './ChessTimer';
 import { MoveHistory } from './MoveHistory';
@@ -10,6 +11,9 @@ import { StockfishAnalysis } from './StockfishAnalysis';
 import { AIPlayerConfig } from './AIPlayerConfig';
 import { AIModelManager } from './AIModelManager';
 import { AIMatch } from './AIMatch';
+import { CustomModelCard } from './CustomModelCard';
+import { APIConfigCard } from './APIConfigCard';
+import { AvailableModelsCard } from './AvailableModelsCard';
 import { Button } from '@/components/ui/button';
 import { PlayIcon, Settings } from 'lucide-react';
 import { Square } from 'chess.js';
@@ -36,6 +40,14 @@ export const ChessBoard = () => {
     startAIGame,
     stopAIGame
   } = useChessStore();
+
+  const {
+    providers,
+    setGeminiApiKey,
+    addCustomModel,
+    updateModel,
+    deleteModel
+  } = useAIChessProviders();
 
   const [moveFrom, setMoveFrom] = useState<Square | null>(null);
   const [optionSquares, setOptionSquares] = useState<SquareStyles>({});
@@ -166,75 +178,111 @@ export const ChessBoard = () => {
 
   // AI match controller (no UI, just logic)
   const [showSettings, setShowSettings] = useState(false);
+
+  // Handle API key update
+  const handleApiKeyUpdate = (apiKey: string) => {
+    setGeminiApiKey(apiKey);
+  };
+
+  // Handle model toggle
+  const handleModelToggle = (providerId: string, modelId: string, enabled: boolean) => {
+    updateModel(providerId, modelId, { enabled });
+  };
+
+  // Handle delete model
+  const handleDeleteModel = (providerId: string, modelId: string) => {
+    if (confirm('Are you sure you want to delete this model?')) {
+      deleteModel(providerId, modelId);
+    }
+  };
   
   return (
     <>
       {/* AI Match controller (no UI) */}
       <AIMatch />
       
-      <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto">
-        {/* Left column - Chessboard and controls */}
-        <div className="flex flex-col gap-4 flex-1">
-          <div className="w-full max-w-md mx-auto">
-            <Chessboard 
-              position={currentPosition}
-              boardWidth={400}
-              areArrowsAllowed={true}
-              onSquareClick={onSquareClick}
-              onPieceDrop={onDrop}
-              onSquareRightClick={onSquareRightClick}
-              customSquareStyles={{
-                ...optionSquares,
-                ...rightClickedSquares
-              }}
-              customBoardStyle={{
-                borderRadius: '4px',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
-              }}
-            />
-          </div>
-          
-          <div className="flex flex-wrap gap-2 justify-center">
-            <Button
-              onClick={() => isAIGameStarted ? stopAIGame() : startAIGame()}
-              variant={isAIGameStarted ? "destructive" : "default"}
-            >
-              <PlayIcon className="h-4 w-4 mr-1" />
-              {isAIGameStarted ? "Stop Game" : "Start Game"}
-            </Button>
-
-            <Button
-              onClick={() => setShowSettings(!showSettings)}
-              variant="outline"
-            >
-              <Settings className="w-4 h-4 mr-1" />
-              AI Settings
-            </Button>
-          </div>
-          
-          <div className="mt-4">
-            <ChessTimer />
-          </div>
-          
-          {/* AI Settings */}
-          {showSettings && (
-            <div className="mt-4">
-              <AIPlayerConfig />
+      <div className="flex flex-col gap-6 p-4 max-w-7xl mx-auto">
+        {/* Main game section */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left column - Chessboard and controls */}
+          <div className="flex flex-col gap-4 flex-1">
+            <div className="w-full max-w-md mx-auto">
+              <Chessboard
+                position={currentPosition}
+                boardWidth={400}
+                areArrowsAllowed={true}
+                onSquareClick={onSquareClick}
+                onPieceDrop={onDrop}
+                onSquareRightClick={onSquareRightClick}
+                customSquareStyles={{
+                  ...optionSquares,
+                  ...rightClickedSquares
+                }}
+                customBoardStyle={{
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+                }}
+              />
             </div>
-          )}
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                onClick={() => isAIGameStarted ? stopAIGame() : startAIGame()}
+                variant={isAIGameStarted ? "destructive" : "default"}
+                size="lg"
+              >
+                <PlayIcon className="h-4 w-4 mr-2" />
+                {isAIGameStarted ? "Stop Game" : "Start Game"}
+              </Button>
+
+              <Button
+                onClick={() => setShowSettings(!showSettings)}
+                variant="outline"
+                size="lg"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                {showSettings ? "Hide Settings" : "AI Settings"}
+              </Button>
+            </div>
+
+            <div className="mt-4">
+              <ChessTimer />
+            </div>
+          </div>
+
+          {/* Right column - Game Status, History and Analysis */}
+          <div className="flex flex-col gap-4 w-full lg:w-80">
+            <GameStatus />
+            <MoveHistory />
+            <StockfishAnalysis />
+          </div>
         </div>
-        
-        {/* Right column - Game Status, History and Analysis */}
-        <div className="flex flex-col gap-4 w-full md:w-80">
-          <GameStatus />
-          <MoveHistory />
-          <StockfishAnalysis />
-          
-          {/* AI Model Manager (only show in settings mode) */}
-          {showSettings && (
-            <AIModelManager />
-          )}
-        </div>
+
+        {/* Bottom section - AI Settings Bento Grid (when expanded) */}
+        {showSettings && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            {/* Left side - Player Config + Custom Model */}
+            <div className="flex flex-col gap-6 h-fit">
+              <AIPlayerConfig />
+              <CustomModelCard
+                providers={providers}
+                onAddModel={addCustomModel}
+              />
+            </div>
+
+            {/* Right side - API Config + Available Models */}
+            <div className="flex flex-col gap-6 h-fit">
+              <APIConfigCard
+                onApiKeyUpdate={handleApiKeyUpdate}
+              />
+              <AvailableModelsCard
+                providers={providers}
+                onModelToggle={handleModelToggle}
+                onDeleteModel={handleDeleteModel}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
