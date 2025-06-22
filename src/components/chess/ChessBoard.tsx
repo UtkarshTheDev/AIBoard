@@ -212,9 +212,8 @@ export const ChessBoard = () => {
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="mt-4">
             <ChessTimer />
-            <GameStatus />
           </div>
           
           {/* AI Settings */}
@@ -225,8 +224,9 @@ export const ChessBoard = () => {
           )}
         </div>
         
-        {/* Right column - History and Analysis */}
+        {/* Right column - Game Status, History and Analysis */}
         <div className="flex flex-col gap-4 w-full md:w-80">
+          <GameStatus />
           <MoveHistory />
           <StockfishAnalysis />
           
