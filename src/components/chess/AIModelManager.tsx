@@ -109,18 +109,18 @@ export const AIModelManager = () => {
   };
   
   if (isLoading) {
-    return <div className="p-4">Loading AI providers...</div>;
+    return <div className="p-4 font-sans text-foreground">Loading AI providers...</div>;
   }
-  
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* API Key Section */}
-      <div className="p-4 border rounded-md">
-        <h3 className="text-lg font-medium mb-4">API Keys</h3>
-        
+      <div className="p-4 border border-border rounded-md bg-card text-card-foreground">
+        <h3 className="text-lg font-medium mb-4 text-foreground">API Keys</h3>
+
         <div className="space-y-4">
           <div>
-            <Label htmlFor="gemini-api-key">Google AI API Key (for Gemini)</Label>
+            <Label htmlFor="gemini-api-key" className="text-foreground">Google AI API Key (for Gemini)</Label>
             <div className="flex gap-2 mt-1">
               <Input
                 id="gemini-api-key"
@@ -128,51 +128,55 @@ export const AIModelManager = () => {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="Enter your Google AI API key"
-                className="flex-1"
+                className="flex-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
               />
-              <Button onClick={handleApiKeyUpdate}>
+              <Button onClick={handleApiKeyUpdate} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <SaveIcon className="h-4 w-4 mr-1" />
                 Save
               </Button>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Get your API key from <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Google AI Studio</a>
+            <p className="text-sm text-muted-foreground mt-1">
+              Get your API key from <a href="https://ai.google.dev/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google AI Studio</a>
             </p>
           </div>
         </div>
       </div>
-      
+
       {/* Models Section */}
-      <div className="p-4 border rounded-md">
-        <h3 className="text-lg font-medium mb-4">Available Models</h3>
-        
+      <div className="p-4 border border-border rounded-md bg-card text-card-foreground">
+        <h3 className="text-lg font-medium mb-4 text-foreground">Available Models</h3>
+
         {providers.length === 0 ? (
-          <div className="text-gray-500">No AI providers available</div>
+          <div className="text-muted-foreground">No AI providers available</div>
         ) : (
           <div className="space-y-6">
             {providers.map(provider => (
               <div key={provider.id} className="space-y-3">
-                <h4 className="font-medium">{provider.name}</h4>
-                
+                <h4 className="font-medium text-foreground">{provider.name}</h4>
+
                 <div className="space-y-2">
                   {provider.models.map(model => (
-                    <div 
+                    <div
                       key={model.id}
-                      className={`flex items-center justify-between p-2 rounded ${model.enabled ? 'bg-gray-100' : 'bg-gray-50'}`}
+                      className={`flex items-center justify-between p-2 rounded border ${
+                        model.enabled
+                          ? 'bg-accent/50 border-accent text-accent-foreground'
+                          : 'bg-muted/50 border-muted text-muted-foreground'
+                      }`}
                     >
                       <div className="flex-1">
                         <div className="font-medium">{model.name}</div>
                         {model.description && (
-                          <div className="text-sm text-gray-500">{model.description}</div>
+                          <div className="text-sm text-muted-foreground">{model.description}</div>
                         )}
                         {model.strength && (
-                          <div className="text-xs text-gray-400">Strength: {model.strength}</div>
+                          <div className="text-xs text-muted-foreground">Strength: {model.strength}</div>
                         )}
                         {model.custom && (
-                          <div className="text-xs text-blue-500">Custom model</div>
+                          <div className="text-xs text-primary">Custom model</div>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <div className="flex items-center space-x-2">
                           <Switch
@@ -183,14 +187,15 @@ export const AIModelManager = () => {
                             {model.enabled !== false ? 'Enabled' : 'Disabled'}
                           </span>
                         </div>
-                        
+
                         {model.custom && (
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteModel(provider.id, model.id)}
+                            className="hover:bg-destructive/10"
                           >
-                            <Trash2Icon className="h-4 w-4 text-red-500" />
+                            <Trash2Icon className="h-4 w-4 text-destructive" />
                           </Button>
                         )}
                       </div>
@@ -202,19 +207,19 @@ export const AIModelManager = () => {
           </div>
         )}
       </div>
-      
+
       {/* Add Custom Model Section */}
-      <div className="p-4 border rounded-md">
-        <h3 className="text-lg font-medium mb-4">Add Custom Model</h3>
-        
+      <div className="p-4 border border-border rounded-md bg-card text-card-foreground">
+        <h3 className="text-lg font-medium mb-4 text-foreground">Add Custom Model</h3>
+
         <div className="space-y-4">
           <div>
-            <Label htmlFor="provider-select">Provider</Label>
+            <Label htmlFor="provider-select" className="text-foreground">Provider</Label>
             <Select
               id="provider-select"
               value={selectedProvider}
               onValueChange={setSelectedProvider}
-              className="w-full mt-1"
+              className="w-full mt-1 bg-input border-border text-foreground"
             >
               <option value="">Select a provider</option>
               {providers.map(provider => (
@@ -224,52 +229,52 @@ export const AIModelManager = () => {
               ))}
             </Select>
           </div>
-          
+
           <div>
-            <Label htmlFor="model-id">Model ID</Label>
+            <Label htmlFor="model-id" className="text-foreground">Model ID</Label>
             <Input
               id="model-id"
               value={newModel.id}
               onChange={(e) => handleNewModelChange('id', e.target.value)}
               placeholder="e.g., custom-gpt4"
-              className="w-full mt-1"
+              className="w-full mt-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          
+
           <div>
-            <Label htmlFor="model-name">Model Name</Label>
+            <Label htmlFor="model-name" className="text-foreground">Model Name</Label>
             <Input
               id="model-name"
               value={newModel.name}
               onChange={(e) => handleNewModelChange('name', e.target.value)}
               placeholder="e.g., Custom GPT-4"
-              className="w-full mt-1"
+              className="w-full mt-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          
+
           <div>
-            <Label htmlFor="model-description">Description (optional)</Label>
+            <Label htmlFor="model-description" className="text-foreground">Description (optional)</Label>
             <Input
               id="model-description"
               value={newModel.description}
               onChange={(e) => handleNewModelChange('description', e.target.value)}
               placeholder="e.g., My custom GPT-4 configuration"
-              className="w-full mt-1"
+              className="w-full mt-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          
+
           <div>
-            <Label htmlFor="model-strength">Strength (optional)</Label>
+            <Label htmlFor="model-strength" className="text-foreground">Strength (optional)</Label>
             <Input
               id="model-strength"
               value={newModel.strength}
               onChange={(e) => handleNewModelChange('strength', e.target.value)}
               placeholder="e.g., Advanced"
-              className="w-full mt-1"
+              className="w-full mt-1 bg-input border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
-          
-          <Button onClick={handleAddModel} className="w-full">
+
+          <Button onClick={handleAddModel} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             <PlusIcon className="h-4 w-4 mr-1" />
             Add Model
           </Button>
@@ -277,4 +282,4 @@ export const AIModelManager = () => {
       </div>
     </div>
   );
-}; 
+};

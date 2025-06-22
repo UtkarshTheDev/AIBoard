@@ -47,11 +47,11 @@ export const AIMatchDebugger = () => {
 
   if (!isVisible) {
     return (
-      <Button 
-        variant="outline" 
-        size="sm" 
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 z-50"
+        className="fixed bottom-4 right-4 z-50 font-sans bg-card text-card-foreground border-border hover:bg-accent hover:text-accent-foreground"
       >
         Debug AI
       </Button>
@@ -59,15 +59,16 @@ export const AIMatchDebugger = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-96 max-h-96 overflow-auto">
-      <Card>
+    <div className="fixed bottom-4 right-4 z-50 w-96 max-h-96 overflow-auto font-sans">
+      <Card className="bg-card text-card-foreground border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex justify-between items-center">
+          <CardTitle className="text-sm flex justify-between items-center text-foreground">
             AI System Debug
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setIsVisible(false)}
+              className="hover:bg-accent hover:text-accent-foreground"
             >
               ×
             </Button>
@@ -76,26 +77,26 @@ export const AIMatchDebugger = () => {
         <CardContent className="text-xs space-y-3">
           {/* Gemini Queue Status */}
           <div>
-            <h4 className="font-semibold text-green-600">Gemini Queue Status</h4>
-            <div className="grid grid-cols-2 gap-1 text-xs">
+            <h4 className="font-semibold text-primary">Gemini Queue Status</h4>
+            <div className="grid grid-cols-2 gap-1 text-xs text-foreground">
               <span>Queue Length:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.queueLength || 0}</span>
-              
+
               <span>Processing:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.isProcessing ? 'Yes' : 'No'}</span>
-              
+
               <span>Active Requests:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.activeRequests || 0}</span>
-              
+
               <span>Request Count:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.requestCount || 0}/30</span>
-              
+
               <span>Burst Count:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.burstCount || 0}/5</span>
-              
+
               <span>Backoff Delay:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.currentBackoffDelay || 0}ms</span>
-              
+
               <span>Failures:</span>
               <span className="font-mono">{debugInfo.geminiQueue?.consecutiveFailures || 0}</span>
             </div>
@@ -103,19 +104,19 @@ export const AIMatchDebugger = () => {
 
           {/* Provider Status */}
           <div>
-            <h4 className="font-semibold text-blue-600">Provider Status</h4>
+            <h4 className="font-semibold text-secondary">Provider Status</h4>
             {Object.entries(debugInfo.providerStatus || {}).map(([providerId, status]: [string, any]) => (
               <div key={providerId} className="mb-2">
-                <div className="font-medium">{providerId}</div>
-                <div className="grid grid-cols-2 gap-1 text-xs ml-2">
+                <div className="font-medium text-foreground">{providerId}</div>
+                <div className="grid grid-cols-2 gap-1 text-xs ml-2 text-foreground">
                   <span>Failures:</span>
                   <span className="font-mono">{status.failures}</span>
-                  
+
                   <span>Disabled:</span>
-                  <span className={`font-mono ${status.disabled ? 'text-red-500' : 'text-green-500'}`}>
+                  <span className={`font-mono ${status.disabled ? 'text-destructive' : 'text-primary'}`}>
                     {status.disabled ? 'Yes' : 'No'}
                   </span>
-                  
+
                   {status.lastFailure > 0 && (
                     <>
                       <span>Last Failure:</span>
@@ -131,18 +132,18 @@ export const AIMatchDebugger = () => {
 
           {/* Actions */}
           <div className="space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={resetProviderStates}
-              className="w-full"
+              className="w-full bg-card text-card-foreground border-border hover:bg-accent hover:text-accent-foreground"
             >
               Reset Provider States
             </Button>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 const registry = AIChessProviderRegistry.getInstance();
                 const geminiProvider = registry.getProvider('gemini') as any;
@@ -150,14 +151,14 @@ export const AIMatchDebugger = () => {
                   geminiProvider.clearQueue();
                 }
               }}
-              className="w-full"
+              className="w-full bg-card text-card-foreground border-border hover:bg-accent hover:text-accent-foreground"
             >
               Clear Gemini Queue
             </Button>
           </div>
 
           {/* Timestamp */}
-          <div className="text-xs text-gray-500 border-t pt-2">
+          <div className="text-xs text-muted-foreground border-t border-border pt-2">
             Last updated: {debugInfo.timestamp ? new Date(debugInfo.timestamp).toLocaleTimeString() : 'Never'}
           </div>
         </CardContent>
