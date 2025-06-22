@@ -345,7 +345,7 @@ export class GeminiProvider extends BaseAIChessProvider {
     const gameContext = this.analyzeGameContext(request.fen, request.options);
     const systemMessage = this.generateSystemMessage(gameContext);
 
-    let userPrompt = `Position: ${request.fen}\n\n`;
+    let userPrompt = `${systemMessage}\n\nPosition: ${request.fen}\n\n`;
 
     // Add previous invalid move feedback if this is a retry
     if (request.previousInvalidMove && request.invalidMoveReason) {
@@ -367,11 +367,8 @@ export class GeminiProvider extends BaseAIChessProvider {
 
     userPrompt += `\nRespond with ONLY the UCI move (e.g., "e2e4", "g8f6"):\n`;
 
+    // Gemini API only supports 'user' and 'model' roles, not 'system'
     return [
-      {
-        role: 'system',
-        parts: [{ text: systemMessage }]
-      },
       {
         role: 'user',
         parts: [{ text: userPrompt }]
