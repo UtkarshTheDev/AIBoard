@@ -2,7 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { useChessStore, MoveInput } from '@/lib/store/chess-store';
-import { useApiStockfish } from '@/lib/hooks/useApiStockfish';
+
 import { ChessTimer } from './ChessTimer';
 import { MoveHistory } from './MoveHistory';
 import { GameStatus } from './GameStatus';
@@ -36,34 +36,10 @@ export const ChessBoard = () => {
     startAIGame,
     stopAIGame
   } = useChessStore();
-  
-  const { isStockfishReady, isCheckingStockfish, stockfishService } = useApiStockfish();
+
   const [moveFrom, setMoveFrom] = useState<Square | null>(null);
   const [optionSquares, setOptionSquares] = useState<SquareStyles>({});
   const [rightClickedSquares, setRightClickedSquares] = useState<SquareStyles>({});
-
-  // Function to get the best move from Stockfish and make it
-  const getAIMove = useCallback(async () => {
-    if (!stockfishService || isGameOver) return;
-    
-    try {
-      await stockfishService.getBestMove(currentPosition, (bestMove) => {
-        if (bestMove) {
-          makeMove(bestMove as unknown as MoveInput);
-        }
-      });
-    } catch (error) {
-      console.error('Error getting AI move:', error);
-    }
-  }, [currentPosition, makeMove, isGameOver, stockfishService]);
-
-  // Start timer if not already running when making an AI move
-  const handleAIMove = useCallback(() => {
-    if (!isTimerRunning) {
-      startTimer();
-    }
-    getAIMove();
-  }, [getAIMove, isTimerRunning, startTimer]);
 
   // Get all possible moves for a piece
   const getMoveOptions = (square: Square) => {
@@ -219,33 +195,17 @@ export const ChessBoard = () => {
           </div>
           
           <div className="flex flex-wrap gap-2 justify-center">
-            {isAIMatch && (
-              <Button 
-                onClick={() => isAIGameStarted ? stopAIGame() : startAIGame()}
-                variant={isAIGameStarted ? "destructive" : "default"}
-              >
-                <PlayIcon className="h-4 w-4 mr-1" />
-                {isAIGameStarted ? "Stop AI Game" : "Start AI Game"}
-              </Button>
-            )}
-            
             <Button
-              onClick={handleAIMove}
-              disabled={isGameOver || !isStockfishReady}
-              className="mt-2"
+              onClick={() => isAIGameStarted ? stopAIGame() : startAIGame()}
+              variant={isAIGameStarted ? "destructive" : "default"}
             >
-              <PlayIcon className="w-4 h-4 mr-1" />
-              {isCheckingStockfish 
-                ? 'Checking Stockfish...' 
-                : !isStockfishReady 
-                  ? 'Stockfish not available' 
-                  : 'Make AI Move'}
+              <PlayIcon className="h-4 w-4 mr-1" />
+              {isAIGameStarted ? "Stop Game" : "Start Game"}
             </Button>
-            
+
             <Button
               onClick={() => setShowSettings(!showSettings)}
               variant="outline"
-              className="mt-2"
             >
               <Settings className="w-4 h-4 mr-1" />
               AI Settings
