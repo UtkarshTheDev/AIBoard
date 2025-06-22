@@ -1,6 +1,7 @@
 import { BaseAIChessProvider } from './base-provider';
 import { AIRequestOptions } from '@/types/ai-chess-provider';
 import { GoogleGenAI } from '@google/genai';
+import { Chess } from 'chess.js';
 import { MoveValidator } from './move-validator';
 
 // Model-specific rate limiting settings - OPTIMIZED FOR SPEED
@@ -55,6 +56,19 @@ interface QueuedRequest {
   retryCount: number;
   resolve: (value: void) => void;
   reject: (error: Error) => void;
+  gameContext?: GameContext;
+  previousInvalidMove?: string;
+  invalidMoveReason?: string;
+}
+
+// Game context interface for strategic enhancement
+interface GameContext {
+  moveHistory?: string[]; // PGN moves
+  gamePhase?: 'opening' | 'middlegame' | 'endgame';
+  timeControl?: 'blitz' | 'rapid' | 'classical';
+  timeRemaining?: number;
+  materialBalance?: number;
+  isImportantPosition?: boolean;
 }
 
 /**
@@ -289,7 +303,84 @@ export class GeminiProvider extends BaseAIChessProvider {
 
   
   /**
-   * Execute a queued request
+   * SYSTEM ROLE OPTIMIZATION - Generate system message
+   */
+  private generateSystemMessage(gameContext: GameContext): string {
+    const { gamePhase, timeControl, isImportantPosition } = gameContext;
+
+    let systemPrompt = "You are a professional chess engine. ";
+
+    // Adapt based on time control
+    if (timeControl === 'blitz') {
+      systemPrompt += "Respond immediately with fast, tactical moves. ";
+    } else if (timeControl === 'classical') {
+      systemPrompt += "Consider strategic depth while maintaining efficiency. ";
+    } else {
+      systemPrompt += "Balance speed and accuracy for optimal play. ";
+    }
+
+    // Add game phase context
+    if (gamePhase === 'opening') {
+      systemPrompt += "Focus on development and center control. ";
+    } else if (gamePhase === 'endgame') {
+      systemPrompt += "Prioritize king activity and pawn promotion. ";
+    } else {
+      systemPrompt += "Look for tactical opportunities and positional improvements. ";
+    }
+
+    // Add importance context
+    if (isImportantPosition) {
+      systemPrompt += "This is a critical position - be extra careful. ";
+    }
+
+    systemPrompt += "Always respond with ONLY the UCI move format (e.g., 'e2e4').";
+
+    return systemPrompt;
+  }
+
+  /**
+   * INTELLIGENT RETRY WITH FEEDBACK - Generate enhanced prompt
+   */
+  private generateEnhancedPrompt(request: QueuedRequest): any[] {
+    const gameContext = this.analyzeGameContext(request.fen, request.options);
+    const systemMessage = this.generateSystemMessage(gameContext);
+
+    let userPrompt = `Position: ${request.fen}\n\n`;
+
+    // Add previous invalid move feedback if this is a retry
+    if (request.previousInvalidMove && request.invalidMoveReason) {
+      userPrompt += `IMPORTANT: Your previous response "${request.previousInvalidMove}" was invalid because: ${request.invalidMoveReason}\n`;
+      userPrompt += `Please provide a different, legal move.\n\n`;
+    }
+
+    // Add strategic context based on game phase
+    if (gameContext.gamePhase === 'endgame') {
+      userPrompt += `This is an endgame position. Focus on king activity and pawn advancement.\n`;
+    } else if (gameContext.gamePhase === 'opening') {
+      userPrompt += `This is an opening position. Prioritize piece development and center control.\n`;
+    }
+
+    // Add time pressure context
+    if (gameContext.timeControl === 'blitz') {
+      userPrompt += `Time control: Blitz - respond with your best move immediately.\n`;
+    }
+
+    userPrompt += `\nRespond with ONLY the UCI move (e.g., "e2e4", "g8f6"):\n`;
+
+    return [
+      {
+        role: 'system',
+        parts: [{ text: systemMessage }]
+      },
+      {
+        role: 'user',
+        parts: [{ text: userPrompt }]
+      }
+    ];
+  }
+
+  /**
+   * Execute a queued request with enhanced prompting and retry logic
    */
   private async executeRequest(request: QueuedRequest): Promise<void> {
     if (!this.apiKey || !this.genAI) {
@@ -301,28 +392,8 @@ export class GeminiProvider extends BaseAIChessProvider {
 
     console.log(`[GeminiProvider] Executing request for position: ${request.fen.substring(0, 20)}... using model: ${modelId}`);
 
-    // Prepare the prompt for Gemini
-    const contents = [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: `You are a fast chess engine. Analyze this position and respond immediately with the best move:
-
-Position: ${request.fen}
-
-Requirements:
-- Respond with ONLY the move in UCI format (e.g., "e2e4", "g8f6")
-- No explanations or analysis text
-- Make your decision quickly but accurately
-- For castling: use king's move (e.g., "e1g1")
-- For promotion: include piece (e.g., "e7e8q")
-
-Move:`
-          }
-        ]
-      }
-    ];
+    // Generate enhanced prompt with context
+    const contents = this.generateEnhancedPrompt(request);
 
     const config = {
       temperature,
@@ -359,10 +430,27 @@ Move:`
       if (move) {
         request.callback(move);
       } else {
-        // Try to get a fallback move if validation fails
+        // INTELLIGENT RETRY WITH FEEDBACK
+        if (request.retryCount < 2) { // Allow 2 retries for invalid moves
+          console.warn(`[GeminiProvider] Invalid move "${text}", retrying with feedback`);
+
+          // Create retry request with feedback
+          const retryRequest: QueuedRequest = {
+            ...request,
+            retryCount: request.retryCount + 1,
+            previousInvalidMove: text,
+            invalidMoveReason: `"${text}" is not a valid UCI move format or is illegal in this position`
+          };
+
+          // Add to front of queue for immediate retry
+          this.requestQueue.unshift(retryRequest);
+          return;
+        }
+
+        // Max retries reached, use fallback
         const fallbackMove = MoveValidator.getRandomLegalMove(request.fen);
         if (fallbackMove) {
-          console.warn(`[GeminiProvider] Using fallback move: ${fallbackMove} due to invalid response: "${text}"`);
+          console.warn(`[GeminiProvider] Using fallback move: ${fallbackMove} after max retries`);
           request.callback(fallbackMove);
         } else {
           throw new Error(`Invalid move format received from Gemini and no fallback available: "${text}"`);
@@ -372,14 +460,10 @@ Move:`
       // Remove from active requests
       this.activeRequests.delete(request.id);
 
-      // Handle rate limit errors with exponential backoff
+      // Handle rate limit errors
       if (error instanceof Error && (error.message.includes('Rate limit') || error.message.includes('429'))) {
         this.consecutiveFailures++;
-        this.currentBackoffDelay = Math.min(
-          this.currentBackoffDelay * RATE_LIMIT_COMMON.BACKOFF_MULTIPLIER,
-          RATE_LIMIT_COMMON.MAX_BACKOFF_MS
-        );
-        console.warn(`[GeminiProvider] Rate limit error, increasing backoff to ${this.currentBackoffDelay}ms`);
+        console.warn(`[GeminiProvider] Rate limit error, consecutive failures: ${this.consecutiveFailures}`);
       }
 
       throw error;
@@ -387,18 +471,151 @@ Move:`
   }
 
   /**
-   * Validate and extract move from API response using enhanced validation
+   * ROBUST OUTPUT PARSING - Enhanced cleanup and extraction
+   */
+  private parseGeminiResponse(text: string): string | null {
+    if (!text || typeof text !== 'string') {
+      return null;
+    }
+
+    // Clean up the response text
+    let cleanText = text.trim();
+
+    // Remove common prefixes and suffixes
+    const prefixPatterns = [
+      /^move:\s*/i,
+      /^the\s+best\s+move\s+is:\s*/i,
+      /^i\s+recommend:\s*/i,
+      /^my\s+move\s+is:\s*/i,
+      /^best\s+move:\s*/i,
+      /^response:\s*/i,
+      /^answer:\s*/i,
+      /^solution:\s*/i
+    ];
+
+    for (const pattern of prefixPatterns) {
+      cleanText = cleanText.replace(pattern, '');
+    }
+
+    // Remove trailing explanations (everything after the first space or newline)
+    cleanText = cleanText.split(/[\s\n]/)[0];
+
+    // Extract UCI moves using multiple regex patterns
+    const uciPatterns = [
+      /\b([a-h][1-8][a-h][1-8][qrbnQRBN]?)\b/g, // Standard UCI format
+      /\b([a-h]\d[a-h]\d[qrbnQRBN]?)\b/g,        // Alternative digit format
+      /([a-h][1-8]-[a-h][1-8][qrbnQRBN]?)/g,     // With dash separator
+    ];
+
+    for (const pattern of uciPatterns) {
+      const matches = cleanText.match(pattern);
+      if (matches && matches.length > 0) {
+        // Return the first valid-looking UCI move
+        for (const match of matches) {
+          const cleanMatch = match.replace('-', '').toLowerCase();
+          if (this.isValidUCIFormat(cleanMatch)) {
+            return cleanMatch;
+          }
+        }
+      }
+    }
+
+    // Fallback: try the cleaned text directly
+    if (this.isValidUCIFormat(cleanText.toLowerCase())) {
+      return cleanText.toLowerCase();
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a string matches UCI format
+   */
+  private isValidUCIFormat(move: string): boolean {
+    const uciPattern = /^[a-h][1-8][a-h][1-8][qrbnQRBN]?$/;
+    return uciPattern.test(move);
+  }
+
+  /**
+   * Enhanced move validation with robust parsing
    */
   private validateAndExtractMove(fen: string, text: string): string | null {
-    const validation = MoveValidator.validateAIResponse(fen, text);
+    // First try robust parsing
+    const parsedMove = this.parseGeminiResponse(text);
+    if (parsedMove && MoveValidator.isLegalMove(fen, parsedMove)) {
+      console.log(`[GeminiProvider] Valid move found via robust parsing: ${parsedMove}`);
+      return parsedMove;
+    }
 
+    // Fallback to original validation
+    const validation = MoveValidator.validateAIResponse(fen, text);
     if (validation.isValid && validation.move) {
-      console.log(`[GeminiProvider] Valid move found: ${validation.move}`);
+      console.log(`[GeminiProvider] Valid move found via fallback validation: ${validation.move}`);
       return validation.move;
     }
 
     console.warn(`[GeminiProvider] Move validation failed: ${validation.error}`);
     return null;
+  }
+
+  /**
+   * STRATEGIC CONTEXT ENHANCEMENT - Analyze game context
+   */
+  private analyzeGameContext(fen: string, options?: AIRequestOptions): GameContext {
+    const game = new Chess();
+    game.load(fen);
+
+    // Determine game phase
+    const pieces = fen.split(' ')[0];
+    const pieceCount = pieces.replace(/[^a-zA-Z]/g, '').length;
+    let gamePhase: 'opening' | 'middlegame' | 'endgame';
+
+    if (pieceCount >= 28) {
+      gamePhase = 'opening';
+    } else if (pieceCount >= 16) {
+      gamePhase = 'middlegame';
+    } else {
+      gamePhase = 'endgame';
+    }
+
+    // Calculate material balance (rough estimate)
+    const materialValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    let whiteValue = 0, blackValue = 0;
+
+    for (const char of pieces) {
+      if (char.match(/[a-z]/)) {
+        blackValue += materialValues[char as keyof typeof materialValues] || 0;
+      } else if (char.match(/[A-Z]/)) {
+        whiteValue += materialValues[char.toLowerCase() as keyof typeof materialValues] || 0;
+      }
+    }
+
+    const materialBalance = whiteValue - blackValue;
+
+    // Determine time control from options
+    const timeControl = options?.timeControl || 'rapid';
+
+    // Check if position is important (in check, near promotion, etc.)
+    const isImportantPosition = game.inCheck() ||
+                               fen.includes('7') || fen.includes('2') || // Pawns near promotion
+                               pieceCount <= 10; // Endgame positions
+
+    return {
+      gamePhase,
+      timeControl,
+      materialBalance,
+      isImportantPosition,
+      timeRemaining: options?.timeRemaining
+    };
+  }
+
+  /**
+   * Generate move history in PGN format for context
+   */
+  private generateMoveHistory(fen: string, maxMoves: number = 10): string[] {
+    // This would ideally come from the chess store, but for now we'll return empty
+    // In a full implementation, this would be passed from the calling component
+    return [];
   }
 
   /**

@@ -22,6 +22,12 @@ export interface AIRequestOptions {
   temperature?: number;
   timeLimit?: number;
   depth?: number;
+  // TIME CONTROL AWARENESS - New options for enhanced prompting
+  timeControl?: 'blitz' | 'rapid' | 'classical';
+  timeRemaining?: number;
+  moveHistory?: string[]; // PGN format moves for context
+  gamePhase?: 'opening' | 'middlegame' | 'endgame';
+  isImportantPosition?: boolean;
   [key: string]: any;
 }
 
