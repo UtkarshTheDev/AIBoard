@@ -227,7 +227,7 @@ export const AIChessValidator = () => {
 
       getAIMove(
         'gemini',
-        'gemini-1.5-pro',
+        'gemini-2.0-flash-exp',
         position.fen,
         (move) => {
           clearTimeout(timeout);

@@ -191,15 +191,17 @@ export class FallbackManager {
    * Map Gemini model to appropriate Stockfish level
    */
   private mapToStockfishLevel(modelId: string): string {
-    // Map based on model strength
-    if (modelId.includes('2.5-pro') || modelId.includes('advanced')) {
-      return 'stockfish-level-20';
-    } else if (modelId.includes('1.5-pro') || modelId.includes('pro')) {
-      return 'stockfish-level-10';
-    } else if (modelId.includes('flash') || modelId.includes('fast')) {
-      return 'stockfish-level-5';
+    // Map based on model strength and capabilities
+    if (modelId.includes('2.5-flash')) {
+      return 'stockfish-level-20'; // Highest level for latest model
+    } else if (modelId.includes('2.0-flash-thinking')) {
+      return 'stockfish-level-15'; // High level for reasoning model
+    } else if (modelId.includes('2.0-flash')) {
+      return 'stockfish-level-10'; // Medium-high level for fast model
+    } else if (modelId.includes('flash')) {
+      return 'stockfish-level-10'; // Default for flash models
     } else {
-      return 'stockfish-level-10'; // Default
+      return 'stockfish-level-10'; // Safe default
     }
   }
   

@@ -3,14 +3,15 @@ import { AIRequestOptions } from '@/types/ai-chess-provider';
 import { GoogleGenAI } from '@google/genai';
 import { MoveValidator } from './move-validator';
 
-// Enhanced rate limiting settings for AI vs AI matches
+// Rate limiting settings based on Gemini free tier limits
+// Using most restrictive model (Gemini 2.5 Flash: 10 RPM) for compatibility
 const RATE_LIMIT = {
-  MAX_REQUESTS_PER_MINUTE: 30, // Increased for AI vs AI gameplay
-  COOLDOWN_MS: 1000, // Reduced to 1 second between requests
-  BURST_LIMIT: 5, // Allow burst of 5 requests
-  BURST_WINDOW_MS: 10000, // 10 second burst window
+  MAX_REQUESTS_PER_MINUTE: 10, // Based on Gemini 2.5 Flash free tier limit
+  COOLDOWN_MS: 6000, // 6 seconds between requests (10 RPM = 6s intervals)
+  BURST_LIMIT: 3, // Conservative burst for free tier
+  BURST_WINDOW_MS: 20000, // 20 second burst window
   BACKOFF_MULTIPLIER: 1.5, // Exponential backoff multiplier
-  MAX_BACKOFF_MS: 30000, // Maximum backoff delay (30 seconds)
+  MAX_BACKOFF_MS: 60000, // Maximum backoff delay (60 seconds)
   RETRY_ATTEMPTS: 3, // Number of retry attempts for rate limited requests
 };
 
@@ -49,21 +50,21 @@ export class GeminiProvider extends BaseAIChessProvider {
       'Google Gemini',
       [
         {
-          id: 'gemini-1.5-pro',
-          name: 'Gemini 1.5 Pro',
-          description: 'Google\'s Gemini 1.5 Pro model',
-          strength: 'Advanced'
-        },
-        {
-          id: 'gemini-2.0-flash',
+          id: 'gemini-2.0-flash-exp',
           name: 'Gemini 2.0 Flash',
-          description: 'Faster version of Gemini 2.0',
+          description: 'Fast and efficient model with 15 RPM on free tier',
           strength: 'Fast'
         },
         {
-          id: 'gemini-2.5-pro',
-          name: 'Gemini 2.5 Pro',
-          description: 'Google\'s most powerful Gemini model',
+          id: 'gemini-2.0-flash-thinking-exp-1219',
+          name: 'Gemini 2.0 Flash Thinking',
+          description: 'Enhanced reasoning model with 15 RPM on free tier',
+          strength: 'Advanced'
+        },
+        {
+          id: 'gemini-2.5-flash',
+          name: 'Gemini 2.5 Flash',
+          description: 'Latest model with 10 RPM on free tier',
           strength: 'Very Advanced'
         }
       ]
@@ -250,7 +251,7 @@ export class GeminiProvider extends BaseAIChessProvider {
       throw new Error('Gemini API key not set');
     }
 
-    const modelId = request.options?.modelId || 'gemini-1.5-pro';
+    const modelId = request.options?.modelId || 'gemini-2.0-flash-exp';
     const temperature = request.options?.temperature || 0.2;
 
     console.log(`[GeminiProvider] Executing request for position: ${request.fen.substring(0, 20)}... using model: ${modelId}`);
@@ -384,7 +385,7 @@ Rules:
       throw new Error('Gemini API key not set');
     }
 
-    const modelId = options?.modelId || 'gemini-1.5-pro';
+    const modelId = options?.modelId || 'gemini-2.0-flash-exp';
     const requestId = `${modelId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
     console.log(`[GeminiProvider] Queuing request for position: ${fen.substring(0, 20)}... using model: ${modelId}`);

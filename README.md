@@ -9,7 +9,7 @@ A chess application that allows you to play against AI models like Gemini and St
 - Fixed rate limiting issues with better global rate limit tracking
 - Removed artificial thinking delay for faster AI moves
 - Added explicit "Start AI Game" button for better control
-- Updated to use correct Gemini model versions (1.0 and 1.5)
+- Updated to use free tier Gemini models (2.0 Flash, 2.0 Flash Thinking, 2.5 Flash)
 - Added comprehensive logging for API responses
 - Reduced cooldown times between requests for better gameplay
 - Improved error handling and user feedback
