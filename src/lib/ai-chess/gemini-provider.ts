@@ -3,17 +3,47 @@ import { AIRequestOptions } from '@/types/ai-chess-provider';
 import { GoogleGenAI } from '@google/genai';
 import { MoveValidator } from './move-validator';
 
-// Rate limiting settings based on Gemini free tier limits
-// Using most restrictive model (Gemini 2.5 Flash: 10 RPM) for compatibility
-const RATE_LIMIT = {
-  MAX_REQUESTS_PER_MINUTE: 10, // Based on Gemini 2.5 Flash free tier limit
-  COOLDOWN_MS: 6000, // 6 seconds between requests (10 RPM = 6s intervals)
-  BURST_LIMIT: 3, // Conservative burst for free tier
-  BURST_WINDOW_MS: 20000, // 20 second burst window
+// Model-specific rate limiting settings - OPTIMIZED FOR SPEED
+const MODEL_RATE_LIMITS = {
+  'gemini-2.5-flash': {
+    MAX_REQUESTS_PER_MINUTE: 10, // 10 RPM for Gemini 2.5 Flash
+    COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
+    BURST_LIMIT: 10, // Allow full RPM in burst
+    BURST_WINDOW_MS: 60000, // 60 second burst window
+  },
+  'gemini-2.0-flash-exp': {
+    MAX_REQUESTS_PER_MINUTE: 15, // 15 RPM for Gemini 2.0 Flash
+    COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
+    BURST_LIMIT: 15, // Allow full RPM in burst
+    BURST_WINDOW_MS: 60000, // 60 second burst window
+  },
+  'gemini-2.0-flash-thinking-exp-1219': {
+    MAX_REQUESTS_PER_MINUTE: 15, // 15 RPM for Gemini 2.0 Flash Thinking
+    COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
+    BURST_LIMIT: 15, // Allow full RPM in burst
+    BURST_WINDOW_MS: 60000, // 60 second burst window
+  }
+};
+
+// Default rate limiting settings for unknown models - OPTIMIZED FOR SPEED
+const DEFAULT_RATE_LIMIT = {
+  MAX_REQUESTS_PER_MINUTE: 10, // Conservative default
+  COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
+  BURST_LIMIT: 10, // Allow full RPM in burst
+  BURST_WINDOW_MS: 60000, // 60 second burst window
+};
+
+// Common rate limiting settings
+const RATE_LIMIT_COMMON = {
   BACKOFF_MULTIPLIER: 1.5, // Exponential backoff multiplier
   MAX_BACKOFF_MS: 60000, // Maximum backoff delay (60 seconds)
   RETRY_ATTEMPTS: 3, // Number of retry attempts for rate limited requests
 };
+
+// Helper function to get rate limits for a specific model
+function getModelRateLimit(modelId: string) {
+  return MODEL_RATE_LIMITS[modelId as keyof typeof MODEL_RATE_LIMITS] || DEFAULT_RATE_LIMIT;
+}
 
 // Request queue interface
 interface QueuedRequest {
@@ -41,8 +71,13 @@ export class GeminiProvider extends BaseAIChessProvider {
   private activeRequests: Set<string> = new Set();
   private requestQueue: QueuedRequest[] = [];
   private isProcessingQueue: boolean = false;
-  private currentBackoffDelay: number = RATE_LIMIT.COOLDOWN_MS;
+  private currentBackoffDelay: number = DEFAULT_RATE_LIMIT.COOLDOWN_MS;
   private consecutiveFailures: number = 0;
+  // Track rate limiting per model
+  private modelRequestCounts: Map<string, number> = new Map();
+  private modelLastRequestTimes: Map<string, number> = new Map();
+  private modelBurstCounts: Map<string, number> = new Map();
+  private modelBurstWindowStarts: Map<string, number> = new Map();
   
   constructor() {
     super(
@@ -91,12 +126,16 @@ export class GeminiProvider extends BaseAIChessProvider {
   private startRequestCountReset() {
     if (typeof window !== 'undefined') {
       this.requestResetTimeout = setInterval(() => {
-        console.log('[GeminiProvider] Resetting request count and burst limits');
+        console.log('[GeminiProvider] Resetting request count and burst limits for all models');
         this.requestCount = 0;
         this.burstCount = 0;
         this.burstWindowStart = 0;
         this.consecutiveFailures = 0;
-        this.currentBackoffDelay = RATE_LIMIT.COOLDOWN_MS;
+        this.currentBackoffDelay = DEFAULT_RATE_LIMIT.COOLDOWN_MS;
+        // Reset per-model tracking
+        this.modelRequestCounts.clear();
+        this.modelBurstCounts.clear();
+        this.modelBurstWindowStarts.clear();
       }, 60000); // Reset every minute
     }
   }
@@ -133,28 +172,23 @@ export class GeminiProvider extends BaseAIChessProvider {
 
           // Reset consecutive failures on success
           this.consecutiveFailures = 0;
-          this.currentBackoffDelay = RATE_LIMIT.COOLDOWN_MS;
+          this.currentBackoffDelay = DEFAULT_RATE_LIMIT.COOLDOWN_MS;
 
           console.log(`[GeminiProvider] Request ${request.id} completed successfully`);
         } else {
           // Re-queue the request if we can't proceed
-          if (request.retryCount < RATE_LIMIT.RETRY_ATTEMPTS) {
+          if (request.retryCount < RATE_LIMIT_COMMON.RETRY_ATTEMPTS) {
             request.retryCount++;
             this.requestQueue.unshift(request); // Put back at front
 
-            console.log(`[GeminiProvider] Request ${request.id} rate limited, retrying (${request.retryCount}/${RATE_LIMIT.RETRY_ATTEMPTS})`);
+            console.log(`[GeminiProvider] Request ${request.id} rate limited, retrying (${request.retryCount}/${RATE_LIMIT_COMMON.RETRY_ATTEMPTS})`);
 
-            // Wait before retrying with exponential backoff
-            const backoffDelay = Math.min(
-              this.currentBackoffDelay * Math.pow(RATE_LIMIT.BACKOFF_MULTIPLIER, request.retryCount),
-              RATE_LIMIT.MAX_BACKOFF_MS
-            );
-
-            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            // NO DELAY - immediate retry for fastest response
+            // Removed exponential backoff for maximum speed
             continue;
           } else {
             // Max retries reached
-            console.error(`[GeminiProvider] Request ${request.id} failed after ${RATE_LIMIT.RETRY_ATTEMPTS} retries`);
+            console.error(`[GeminiProvider] Request ${request.id} failed after ${RATE_LIMIT_COMMON.RETRY_ATTEMPTS} retries`);
             request.reject(new Error('Rate limit exceeded after maximum retries'));
           }
         }
@@ -163,8 +197,7 @@ export class GeminiProvider extends BaseAIChessProvider {
         request.reject(error instanceof Error ? error : new Error(String(error)));
       }
 
-      // Small delay between processing requests to prevent overwhelming
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // NO DELAY - process requests as fast as possible
     }
 
     console.log(`[GeminiProvider] Queue processor finished, queue is empty`);
@@ -185,7 +218,7 @@ export class GeminiProvider extends BaseAIChessProvider {
   }
   
   /**
-   * Advanced rate limiting with burst support and exponential backoff
+   * Model-specific rate limiting with burst support and exponential backoff
    */
   private async checkAdvancedRateLimit(requestId: string): Promise<boolean> {
     // If this is an active request, don't count it again
@@ -194,49 +227,61 @@ export class GeminiProvider extends BaseAIChessProvider {
       return true;
     }
 
+    // Extract model ID from request ID
+    const modelId = requestId.split('-')[0];
+    const rateLimit = getModelRateLimit(modelId);
     const now = Date.now();
 
-    // Check burst limit
-    if (this.burstWindowStart === 0 || (now - this.burstWindowStart) > RATE_LIMIT.BURST_WINDOW_MS) {
-      // Reset burst window
-      this.burstWindowStart = now;
-      this.burstCount = 0;
+    // Initialize model tracking if not exists
+    if (!this.modelRequestCounts.has(modelId)) {
+      this.modelRequestCounts.set(modelId, 0);
+      this.modelLastRequestTimes.set(modelId, 0);
+      this.modelBurstCounts.set(modelId, 0);
+      this.modelBurstWindowStarts.set(modelId, 0);
     }
 
-    // Check if we've exceeded burst limit
-    if (this.burstCount >= RATE_LIMIT.BURST_LIMIT) {
-      const timeUntilBurstReset = RATE_LIMIT.BURST_WINDOW_MS - (now - this.burstWindowStart);
-      if (timeUntilBurstReset > 0) {
-        console.warn(`[GeminiProvider] Burst limit exceeded, waiting ${timeUntilBurstReset}ms`);
-        return false;
-      }
+    const modelRequestCount = this.modelRequestCounts.get(modelId) || 0;
+    const modelLastRequestTime = this.modelLastRequestTimes.get(modelId) || 0;
+    const modelBurstWindowStart = this.modelBurstWindowStarts.get(modelId) || 0;
+
+    // Check burst limit for this model
+    if (modelBurstWindowStart === 0 || (now - modelBurstWindowStart) > rateLimit.BURST_WINDOW_MS) {
+      // Reset burst window for this model
+      this.modelBurstWindowStarts.set(modelId, now);
+      this.modelBurstCounts.set(modelId, 0);
     }
 
-    // Check overall rate limit
-    if (this.requestCount >= RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) {
-      console.warn(`[GeminiProvider] Rate limit exceeded (${this.requestCount}/${RATE_LIMIT.MAX_REQUESTS_PER_MINUTE} requests)`);
-      return false;
-    }
+    // DISABLED: No artificial rate limiting - let API handle it naturally
+    // This allows maximum speed and lets the API return rate limit errors if needed
+    //
+    // Note: Burst and RPM limits are disabled to ensure fastest possible response
+    // If API rate limits are hit, the error will be handled by fallback system
 
-    // Calculate time since last request with exponential backoff
-    const timeSinceLastRequest = now - this.lastRequestTime;
-    const requiredDelay = Math.min(this.currentBackoffDelay, RATE_LIMIT.MAX_BACKOFF_MS);
+    // NO ARTIFICIAL DELAYS - let the API handle rate limiting naturally
+    // Only apply minimal cooldown if specified by model (which is now 0 for all models)
+    const timeSinceLastRequest = now - modelLastRequestTime;
+    const requiredDelay = rateLimit.COOLDOWN_MS; // This is now 0 for all models
 
-    if (timeSinceLastRequest < requiredDelay) {
+    if (requiredDelay > 0 && timeSinceLastRequest < requiredDelay) {
       const delayMs = requiredDelay - timeSinceLastRequest;
-      console.log(`[GeminiProvider] Applying rate limit delay: ${delayMs}ms (backoff: ${this.currentBackoffDelay}ms)`);
+      console.log(`[GeminiProvider] Applying minimal rate limit delay for ${modelId}: ${delayMs}ms`);
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
 
     // Add to active requests
     this.activeRequests.add(requestId);
 
-    // Update request tracking
+    // Minimal tracking for debugging purposes only (no rate limiting applied)
+    this.modelLastRequestTimes.set(modelId, Date.now());
+    this.modelRequestCounts.set(modelId, modelRequestCount + 1);
+    this.modelBurstCounts.set(modelId, (this.modelBurstCounts.get(modelId) || 0) + 1);
+
+    // Also update global tracking for backward compatibility
     this.lastRequestTime = Date.now();
     this.requestCount++;
     this.burstCount++;
 
-    console.log(`[GeminiProvider] Request count: ${this.requestCount}/${RATE_LIMIT.MAX_REQUESTS_PER_MINUTE}, burst: ${this.burstCount}/${RATE_LIMIT.BURST_LIMIT}`);
+    console.log(`[GeminiProvider] ${modelId} request sent immediately - no rate limiting applied`);
 
     return true;
   }
@@ -262,20 +307,18 @@ export class GeminiProvider extends BaseAIChessProvider {
         role: 'user',
         parts: [
           {
-            text: `
-You are a chess engine analyzing the following position in FEN notation:
-${request.fen}
+            text: `You are a fast chess engine. Analyze this position and respond immediately with the best move:
 
-Please analyze this position and determine the best move. You must respond with ONLY a valid UCI chess move notation (e.g., "e2e4", "g8f6").
-Your response must be a single valid chess move and nothing else.
+Position: ${request.fen}
 
-Rules:
-1. The move must be legal according to chess rules for this position.
-2. Provide only the move in UCI format (e.g., "e2e4").
-3. Do not include any explanations, analysis, or additional text.
-4. For castling, use the king's move (e.g., "e1g1" for white kingside castle).
-5. For pawn promotion, include the promotion piece (e.g., "e7e8q" for promotion to queen).
-`
+Requirements:
+- Respond with ONLY the move in UCI format (e.g., "e2e4", "g8f6")
+- No explanations or analysis text
+- Make your decision quickly but accurately
+- For castling: use king's move (e.g., "e1g1")
+- For promotion: include piece (e.g., "e7e8q")
+
+Move:`
           }
         ]
       }
@@ -333,8 +376,8 @@ Rules:
       if (error instanceof Error && (error.message.includes('Rate limit') || error.message.includes('429'))) {
         this.consecutiveFailures++;
         this.currentBackoffDelay = Math.min(
-          this.currentBackoffDelay * RATE_LIMIT.BACKOFF_MULTIPLIER,
-          RATE_LIMIT.MAX_BACKOFF_MS
+          this.currentBackoffDelay * RATE_LIMIT_COMMON.BACKOFF_MULTIPLIER,
+          RATE_LIMIT_COMMON.MAX_BACKOFF_MS
         );
         console.warn(`[GeminiProvider] Rate limit error, increasing backoff to ${this.currentBackoffDelay}ms`);
       }

@@ -58,10 +58,10 @@ export class AIChessErrorHandler {
     if (errorString.includes('rate limit') || errorString.includes('429') || errorString.includes('too many requests')) {
       return new AIChessError(
         AIChessErrorType.RATE_LIMIT,
-        'Rate limit exceeded. Please wait before making more requests.',
+        'Rate limit exceeded. Switching to fallback provider.',
         providerId,
         true,
-        10000, // 10 second retry delay
+        0, // NO DELAY - immediate fallback
         error
       );
     }
@@ -93,10 +93,10 @@ export class AIChessErrorHandler {
     if (errorString.includes('network') || errorString.includes('fetch') || errorString.includes('connection')) {
       return new AIChessError(
         AIChessErrorType.NETWORK_ERROR,
-        'Network error. Please check your internet connection.',
+        'Network error. Switching to fallback provider.',
         providerId,
         true,
-        5000, // 5 second retry delay
+        0, // NO DELAY - immediate fallback
         error
       );
     }
@@ -105,10 +105,10 @@ export class AIChessErrorHandler {
     if (errorString.includes('timeout') || errorString.includes('timed out')) {
       return new AIChessError(
         AIChessErrorType.TIMEOUT,
-        'Request timed out. The AI provider is taking too long to respond.',
+        'Request timed out. Switching to fallback provider.',
         providerId,
         true,
-        3000, // 3 second retry delay
+        0, // NO DELAY - immediate fallback
         error
       );
     }
@@ -117,10 +117,10 @@ export class AIChessErrorHandler {
     if (errorString.includes('quota') || errorString.includes('limit exceeded')) {
       return new AIChessError(
         AIChessErrorType.QUOTA_EXCEEDED,
-        'API quota exceeded. Please try again later or upgrade your plan.',
+        'API quota exceeded. Switching to fallback provider.',
         providerId,
         true,
-        60000, // 1 minute retry delay
+        0, // NO DELAY - immediate fallback
         error
       );
     }
@@ -129,10 +129,10 @@ export class AIChessErrorHandler {
     if (errorString.includes('invalid move') || errorString.includes('illegal move')) {
       return new AIChessError(
         AIChessErrorType.INVALID_MOVE,
-        'AI generated an invalid move. Retrying with different parameters.',
+        'AI generated an invalid move. Retrying immediately.',
         providerId,
         true,
-        1000, // 1 second retry delay
+        0, // NO DELAY - immediate retry
         error
       );
     }
@@ -155,7 +155,7 @@ export class AIChessErrorHandler {
       `Unexpected error: ${errorMessage}`,
       providerId,
       true,
-      5000, // 5 second retry delay
+      0, // NO DELAY - immediate retry/fallback
       error
     );
   }
@@ -182,22 +182,22 @@ export class AIChessErrorHandler {
     let shouldRetry = classifiedError.retryable;
     let shouldFallback = false;
 
-    // Determine recovery strategy based on error type
+    // Determine recovery strategy based on error type - ALL IMMEDIATE
     switch (classifiedError.type) {
       case AIChessErrorType.RATE_LIMIT:
-        userMessage = `Rate limit reached for ${providerId}. Waiting ${classifiedError.retryDelay / 1000} seconds...`;
+        userMessage = `Rate limit reached for ${providerId}. Switching to backup provider immediately.`;
         shouldFallback = true; // Try fallback provider immediately
         break;
 
       case AIChessErrorType.API_KEY_INVALID:
       case AIChessErrorType.API_KEY_MISSING:
-        userMessage = `API key issue with ${providerId}. Please check your configuration.`;
+        userMessage = `API key issue with ${providerId}. Switching to backup provider.`;
         shouldRetry = false;
         shouldFallback = true;
         break;
 
       case AIChessErrorType.NETWORK_ERROR:
-        userMessage = `Network error with ${providerId}. Retrying in ${classifiedError.retryDelay / 1000} seconds...`;
+        userMessage = `Network error with ${providerId}. Switching to backup provider immediately.`;
         shouldFallback = true;
         break;
 
@@ -214,16 +214,16 @@ export class AIChessErrorHandler {
         break;
 
       case AIChessErrorType.INVALID_MOVE:
-        userMessage = `AI generated invalid move. Retrying with adjusted parameters...`;
+        userMessage = `AI generated invalid move. Retrying immediately with adjusted parameters.`;
         break;
 
       case AIChessErrorType.TIMEOUT:
-        userMessage = `${providerId} timed out. Retrying with backup provider...`;
+        userMessage = `${providerId} timed out. Switching to backup provider immediately.`;
         shouldFallback = true;
         break;
 
       default:
-        userMessage = `Unexpected error with ${providerId}. Trying backup provider...`;
+        userMessage = `Unexpected error with ${providerId}. Switching to backup provider immediately.`;
         shouldFallback = true;
         break;
     }
@@ -344,16 +344,12 @@ export class AIChessErrorHandler {
       };
     }
 
-    // Default to retry with exponential backoff
-    const baseDelay = lastError.retryDelay || 1000;
-    const exponentialDelay = baseDelay * Math.pow(2, errors.length - 1);
-    const maxDelay = 30000; // 30 seconds max
-
+    // Default to immediate retry/fallback - NO DELAYS
     return {
       shouldContinue: true,
       nextAction: lastError.retryable ? 'retry' : 'fallback',
-      delay: Math.min(exponentialDelay, maxDelay),
-      message: `Retrying in ${Math.min(exponentialDelay, maxDelay) / 1000} seconds...`
+      delay: 0, // NO DELAY - immediate action
+      message: `Retrying immediately...`
     };
   }
 
