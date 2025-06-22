@@ -11,7 +11,11 @@ export abstract class BaseAIChessProvider implements AIChessProvider {
   constructor(id: string, name: string, models: AIChessModel[]) {
     this.id = id;
     this.name = name;
-    this._models = models;
+    // Ensure all models have enabled flag set to true by default
+    this._models = models.map(model => ({
+      ...model,
+      enabled: model.enabled !== false // Default to true if not explicitly set to false
+    }));
   }
   
   /**
@@ -33,13 +37,15 @@ export abstract class BaseAIChessProvider implements AIChessProvider {
       this._models[existingIndex] = {
         ...this._models[existingIndex],
         ...model,
-        custom: true
+        custom: true,
+        enabled: model.enabled !== false // Default to true if not explicitly set to false
       };
     } else {
       // Add new model
       this._models.push({
         ...model,
-        custom: true
+        custom: true,
+        enabled: model.enabled !== false // Default to true if not explicitly set to false
       });
     }
   }
@@ -55,6 +61,10 @@ export abstract class BaseAIChessProvider implements AIChessProvider {
         ...this._models[modelIndex],
         ...updates
       };
+      
+      console.log(`[BaseProvider] Updated model ${id} in provider ${this.id}:`, this._models[modelIndex]);
+    } else {
+      console.warn(`[BaseProvider] Attempted to update non-existent model ${id} in provider ${this.id}`);
     }
   }
   
@@ -66,6 +76,11 @@ export abstract class BaseAIChessProvider implements AIChessProvider {
     
     if (modelIndex >= 0 && this._models[modelIndex].custom) {
       this._models.splice(modelIndex, 1);
+      console.log(`[BaseProvider] Deleted custom model ${id} from provider ${this.id}`);
+    } else if (modelIndex >= 0) {
+      console.warn(`[BaseProvider] Attempted to delete non-custom model ${id} from provider ${this.id}`);
+    } else {
+      console.warn(`[BaseProvider] Attempted to delete non-existent model ${id} from provider ${this.id}`);
     }
   }
   

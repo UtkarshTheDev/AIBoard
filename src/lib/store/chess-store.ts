@@ -37,6 +37,7 @@ interface ChessState {
   isAIMatch: boolean;
   isAITurn: boolean;
   isAIThinking: boolean;
+  isAIGameStarted: boolean;
   
   // Timer state
   timer: number;
@@ -57,6 +58,8 @@ interface ChessState {
   setBlackPlayer: (player: Player) => void;
   setIsAIMatch: (isAIMatch: boolean) => void;
   setIsAIThinking: (isThinking: boolean) => void;
+  startAIGame: () => void;
+  stopAIGame: () => void;
   
   // Timer functions
   startTimer: () => void;
@@ -88,6 +91,7 @@ export const useChessStore = create<ChessState>((set, get) => ({
   isAIMatch: false,
   isAITurn: false,
   isAIThinking: false,
+  isAIGameStarted: false,
   
   // Timer state
   timer: 60,
@@ -330,5 +334,13 @@ export const useChessStore = create<ChessState>((set, get) => ({
   
   stopAIMatch: () => {
     get().setIsAIMatch(false);
+  },
+  
+  startAIGame: () => {
+    set({ isAIGameStarted: true });
+  },
+  
+  stopAIGame: () => {
+    set({ isAIGameStarted: false });
   }
 })); 

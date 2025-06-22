@@ -2,13 +2,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MoveInput, useChessStore } from '@/lib/store/chess-store';
 import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { AIChessErrorHandler, AIChessError } from '@/lib/ai-chess/error-handler';
 import { toast } from 'sonner';
 
-// Constants for timing
-const MIN_THINKING_TIME = 800;  // Minimum thinking time in ms
-const MAX_THINKING_TIME = 2500; // Maximum thinking time in ms
-const RETRY_DELAY = 5000;       // Delay before retrying after an error
-const MAX_RETRIES = 2;          // Maximum number of retries
+// Constants for timing and error handling
+const RETRY_DELAY = 3000;       // Delay before retrying after an error (reduced)
+const MAX_RETRIES = 3;          // Maximum number of retries (increased)
+const RATE_LIMIT_RETRY_DELAY = 10000; // Delay for rate limit errors (reduced)
+const INVALID_MOVE_RETRY_DELAY = 1000; // Quick retry for invalid moves
 
 export const AIMatch = () => {
   const { 
@@ -21,31 +22,54 @@ export const AIMatch = () => {
     setIsAIThinking,
     whitePlayer, 
     blackPlayer,
-    game
+    game,
+    startAIGame,
+    isAIGameStarted
   } = useChessStore();
   
   const { getAIMove } = useAIChessProviders();
   const [retryCount, setRetryCount] = useState(0);
-  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [errorHistory, setErrorHistory] = useState<AIChessError[]>([]);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track the current player's turn
+  const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
   
   // Clean up timeouts on unmount
   useEffect(() => {
     return () => {
-      if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
   }, []);
   
-  // Reset retry count when the turn changes
+  // Reset retry count and error history when the turn changes
   useEffect(() => {
     setRetryCount(0);
+    setErrorHistory([]);
   }, [isAITurn, currentPosition]);
+  
+  // Update current turn when position changes
+  useEffect(() => {
+    if (game) {
+      setCurrentTurn(game.turn() === 'w' ? 'white' : 'black');
+    }
+  }, [game, currentPosition]);
+  
+  // Update current player ID when turn or players change
+  useEffect(() => {
+    const player = currentTurn === 'white' ? whitePlayer : blackPlayer;
+    if (player.type === 'ai' && player.providerId && player.modelId) {
+      setCurrentPlayerId(`${player.providerId}-${player.modelId}`);
+    } else {
+      setCurrentPlayerId(null);
+    }
+  }, [currentTurn, whitePlayer, blackPlayer]);
   
   // Handle AI moves
   useEffect(() => {
-    // If it's not an AI match, or game is over, or AI is already thinking, don't do anything
-    if (!isAIMatch || isGameOver || isAIThinking || !isAITurn) return;
+    // If it's not an AI match, or game is over, or AI is already thinking, or game not started, don't do anything
+    if (!isAIMatch || isGameOver || isAIThinking || !isAITurn || !isAIGameStarted) return;
     
     const makeAIMove = async () => {
       try {
@@ -59,92 +83,118 @@ export const AIMatch = () => {
         // Set AI thinking state
         setIsAIThinking(true);
         
-        // Calculate a random thinking time to make it feel more natural
-        const thinkingTime = Math.floor(
-          Math.random() * (MAX_THINKING_TIME - MIN_THINKING_TIME) + MIN_THINKING_TIME
-        );
+        console.log(`[AIMatch] AI making move: ${currentPlayer.name} (${currentPlayer.providerId}/${currentPlayer.modelId})`);
         
-        // Clear any existing timeout
-        if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
-        
-        // Set a timeout to make the AI "think"
-        moveTimeoutRef.current = setTimeout(async () => {
-          try {
-            // Get the AI move
-            await getAIMove(
-              currentPlayer.providerId!, 
-              currentPlayer.modelId!, 
-              currentPosition,
-              (bestMove) => {
-                // Make the move
-                const moveResult = makeMove(bestMove as unknown as MoveInput);
-                
-                // Check if move was successful
-                if (!moveResult) {
-                  console.error(`Invalid move from AI: ${bestMove}`);
-                  if (typeof window !== 'undefined') {
-                    toast.error(`AI made an invalid move: ${bestMove}`, {
-                      description: "The AI will try a different move."
-                    });
-                  }
-                  
-                  // Reset thinking state to allow another attempt
-                  setIsAIThinking(false);
-                  
-                  // Increment retry count
-                  setRetryCount(prev => prev + 1);
-                } else {
-                  // Reset retry count on successful move
-                  setRetryCount(0);
-                  setIsAIThinking(false);
-                }
-              },
-              { 
-                temperature: 0.2 + (retryCount * 0.1), // Increase randomness with each retry
-                timeLimit: 10000 // 10 seconds max per move
-              }
-            );
-          } catch (error) {
-            console.error('Error making AI move:', error);
-            
-            // Handle rate limit errors differently
-            if (error instanceof Error && error.message.includes('Rate limit')) {
-              toast.error("Rate limit reached", {
-                description: "Waiting 30 seconds before trying again."
-              });
-              
-              // Set a longer timeout for rate limit errors
-              if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-              retryTimeoutRef.current = setTimeout(() => {
-                setIsAIThinking(false);
-              }, 30000);
-            } else {
-              // For other errors, retry after a delay if under max retries
-              if (retryCount < MAX_RETRIES) {
-                toast.error(`AI error: ${error instanceof Error ? error.message : String(error)}`, {
-                  description: `Retrying in ${RETRY_DELAY/1000} seconds...`
-                });
-                
-                // Set timeout to retry
-                if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-                retryTimeoutRef.current = setTimeout(() => {
-                  setIsAIThinking(false);
-                  setRetryCount(prev => prev + 1);
-                }, RETRY_DELAY);
-              } else {
-                // Max retries reached
-                toast.error("Failed to make AI move after multiple attempts", {
-                  description: "Please try again later or choose a different model."
-                });
-                setIsAIThinking(false);
-                setRetryCount(0);
-              }
-            }
+        try {
+          if (!currentPlayer.providerId || !currentPlayer.modelId) {
+            throw new Error("AI player not properly configured");
           }
-        }, thinkingTime);
-        
+          
+          // Get the AI move directly without delay
+          await getAIMove(
+            currentPlayer.providerId, 
+            currentPlayer.modelId, 
+            currentPosition,
+            (bestMove) => {
+              console.log(`[AIMatch] AI move received: ${bestMove}`);
+              // Make the move
+              const moveResult = makeMove(bestMove as unknown as MoveInput);
+              
+              // Check if move was successful
+              if (!moveResult) {
+                console.error(`[AIMatch] Invalid move from AI: ${bestMove}`);
+
+                // Create invalid move error
+                const invalidMoveError = new Error(`Invalid move: ${bestMove}`);
+                const providerId = currentPlayer.providerId || 'unknown';
+                const errorHandling = AIChessErrorHandler.handleError(
+                  invalidMoveError,
+                  providerId,
+                  `Invalid move generation: ${bestMove}`
+                );
+
+                // Add error to history
+                const classifiedError = AIChessErrorHandler.classifyError(invalidMoveError, providerId);
+                setErrorHistory(prev => [...prev, classifiedError]);
+
+                // Create recovery plan
+                const recoveryPlan = AIChessErrorHandler.createRecoveryPlan([...errorHistory, classifiedError], MAX_RETRIES);
+
+                if (recoveryPlan.shouldContinue && retryCount < MAX_RETRIES) {
+                  // Quick retry for invalid moves
+                  if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+                  retryTimeoutRef.current = setTimeout(() => {
+                    setIsAIThinking(false);
+                    setRetryCount(prev => prev + 1);
+                  }, INVALID_MOVE_RETRY_DELAY);
+                } else {
+                  // Max retries reached for invalid moves
+                  setIsAIThinking(false);
+                  setRetryCount(0);
+                  setErrorHistory([]);
+                }
+              } else {
+                // Reset retry count and error history on successful move
+                setRetryCount(0);
+                setErrorHistory([]);
+                setIsAIThinking(false);
+              }
+            },
+            { 
+              temperature: 0.2 + (retryCount * 0.1), // Increase randomness with each retry
+              timeLimit: 10000 // 10 seconds max per move
+            }
+          );
+        } catch (error) {
+          console.error('[AIMatch] Error making AI move:', error);
+
+          // Use enhanced error handling
+          const providerId = currentPlayer.providerId || 'unknown';
+          const errorHandling = AIChessErrorHandler.handleError(
+            error,
+            providerId,
+            `AI move generation for ${currentPlayer.name}`
+          );
+
+          // Add error to history
+          const classifiedError = AIChessErrorHandler.classifyError(error, providerId);
+          setErrorHistory(prev => [...prev, classifiedError]);
+
+          // Create recovery plan based on error history
+          const recoveryPlan = AIChessErrorHandler.createRecoveryPlan([...errorHistory, classifiedError], MAX_RETRIES);
+
+          if (!recoveryPlan.shouldContinue) {
+            // Too many errors, abort
+            setIsAIThinking(false);
+            setRetryCount(0);
+            setErrorHistory([]);
+            return;
+          }
+
+          // Execute recovery plan
+          if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+
+          if (recoveryPlan.nextAction === 'retry') {
+            retryTimeoutRef.current = setTimeout(() => {
+              setIsAIThinking(false);
+              setRetryCount(prev => prev + 1);
+            }, recoveryPlan.delay);
+          } else if (recoveryPlan.nextAction === 'fallback') {
+            // The fallback will be handled automatically by the FallbackManager
+            // Just retry immediately to trigger the fallback
+            retryTimeoutRef.current = setTimeout(() => {
+              setIsAIThinking(false);
+              setRetryCount(prev => prev + 1);
+            }, Math.min(recoveryPlan.delay, 2000)); // Max 2 second delay for fallback
+          } else {
+            // Abort
+            setIsAIThinking(false);
+            setRetryCount(0);
+            setErrorHistory([]);
+          }
+        }
       } catch (error) {
-        console.error('Error in makeAIMove:', error);
+        console.error('[AIMatch] Error in makeAIMove:', error);
         setIsAIThinking(false);
       }
     };
@@ -162,7 +212,9 @@ export const AIMatch = () => {
     makeMove, 
     getAIMove, 
     setIsAIThinking,
-    retryCount
+    retryCount,
+    currentPlayerId,
+    isAIGameStarted // Add dependency on isAIGameStarted
   ]);
   
   // Don't render anything, this is just a controller component

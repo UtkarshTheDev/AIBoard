@@ -30,7 +30,11 @@ export const ChessBoard = () => {
     makeMove, 
     isGameOver,
     isTimerRunning,
-    startTimer
+    startTimer,
+    isAIMatch,
+    isAIGameStarted,
+    startAIGame,
+    stopAIGame
   } = useChessStore();
   
   const { isStockfishReady, isCheckingStockfish, stockfishService } = useApiStockfish();
@@ -214,7 +218,17 @@ export const ChessBoard = () => {
             />
           </div>
           
-          <div className="flex justify-center gap-2">
+          <div className="flex flex-wrap gap-2 justify-center">
+            {isAIMatch && (
+              <Button 
+                onClick={() => isAIGameStarted ? stopAIGame() : startAIGame()}
+                variant={isAIGameStarted ? "destructive" : "default"}
+              >
+                <PlayIcon className="h-4 w-4 mr-1" />
+                {isAIGameStarted ? "Stop AI Game" : "Start AI Game"}
+              </Button>
+            )}
+            
             <Button
               onClick={handleAIMove}
               disabled={isGameOver || !isStockfishReady}

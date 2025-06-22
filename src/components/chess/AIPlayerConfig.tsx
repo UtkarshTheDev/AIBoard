@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { BrainCircuit, User, Key } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export const AIPlayerConfig = () => {
   const { 
@@ -28,14 +29,18 @@ export const AIPlayerConfig = () => {
   
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeySet, setApiKeySet] = useState(false);
   
   // Load stored API key on mount
   useEffect(() => {
     const storedApiKey = localStorage.getItem('gemini_api_key');
     if (storedApiKey) {
       setApiKeyInput(storedApiKey);
+      setGeminiApiKey(storedApiKey);
+      setApiKeySet(true);
+      console.log('[AIPlayerConfig] Loaded API key from localStorage');
     }
-  }, []);
+  }, [setGeminiApiKey]);
   
   // Get all available models
   const allModels = getAllModels();
@@ -51,6 +56,12 @@ export const AIPlayerConfig = () => {
         name: 'Human' 
       });
     } else {
+      // Check if API key is set for Gemini
+      if (!apiKeySet) {
+        toast.error("Please set your Gemini API key first");
+        return;
+      }
+      
       // Default to first available provider and model if switching to AI
       const defaultProvider = providers[0];
       const defaultModel = defaultProvider?.models[0];
@@ -94,12 +105,30 @@ export const AIPlayerConfig = () => {
   
   // Handle API key update
   const handleApiKeyUpdate = () => {
-    setGeminiApiKey(apiKeyInput);
-    localStorage.setItem('gemini_api_key', apiKeyInput);
+    if (!apiKeyInput.trim()) {
+      toast.error("Please enter a valid API key");
+      return;
+    }
+    
+    try {
+      setGeminiApiKey(apiKeyInput);
+      localStorage.setItem('gemini_api_key', apiKeyInput);
+      setApiKeySet(true);
+      toast.success("API key set successfully");
+    } catch (error) {
+      console.error("[AIPlayerConfig] Error setting API key:", error);
+      toast.error("Failed to set API key");
+    }
   };
   
   // Handle AI match toggle
   const handleAIMatchToggle = (enabled: boolean) => {
+    // Check if API key is set for Gemini when enabling AI match
+    if (enabled && !apiKeySet) {
+      toast.error("Please set your Gemini API key first");
+      return;
+    }
+    
     if (enabled) {
       startAIMatch();
     } else {
@@ -145,6 +174,7 @@ export const AIPlayerConfig = () => {
             Google AI Studio
           </a>
         </p>
+        {apiKeySet && <p className="text-xs text-green-500">API key is set ✓</p>}
       </div>
       
       {/* AI vs AI Match Toggle */}
@@ -157,6 +187,7 @@ export const AIPlayerConfig = () => {
           id="ai-match"
           checked={isAIMatch}
           onCheckedChange={handleAIMatchToggle}
+          disabled={!apiKeySet}
         />
       </div>
       
