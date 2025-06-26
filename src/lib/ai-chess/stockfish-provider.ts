@@ -50,12 +50,28 @@ export class StockfishProvider extends BaseAIChessProvider {
     // Get the model ID or use a default
     const modelId = options?.modelId || 'stockfish-level-10';
 
-    // Extract the level from the model ID
-    let depth = 10; // Default depth
+    // Extract the level from the model ID and map to appropriate depth for high-quality play
+    let depth = 18; // Default depth for strong play
     const match = modelId.match(/stockfish-level-(\d+)/);
     if (match && match[1]) {
-      depth = parseInt(match[1], 10);
+      const level = parseInt(match[1], 10);
+      // Map level to depth with higher minimums for quality play:
+      // level 1-3 = depth 12-14 (still strong but faster)
+      // level 4-7 = depth 15-18 (tournament strength)
+      // level 8-10 = depth 19-21 (master level)
+      // level 11+ = depth 22-25 (grandmaster level)
+      if (level <= 3) {
+        depth = 12 + (level - 1);
+      } else if (level <= 7) {
+        depth = 15 + (level - 4);
+      } else if (level <= 10) {
+        depth = 19 + (level - 8);
+      } else {
+        depth = Math.min(22 + (level - 11), 25);
+      }
     }
+
+    console.log(`[StockfishProvider] Using depth ${depth} for ${modelId}`);
 
     // Use the client-side Stockfish service
     const stockfishService = getStockfishService();

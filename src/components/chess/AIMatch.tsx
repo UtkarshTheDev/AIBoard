@@ -73,6 +73,7 @@ export const AIMatch = () => {
         setIsAIThinking(true);
 
         console.log(`[AIMatch] AI making move: ${currentPlayer.name} (${currentPlayer.providerId}/${currentPlayer.modelId})`);
+        console.log(`[AIMatch] Current position: ${currentPosition}`);
 
         try {
           if (!currentPlayer.providerId || !currentPlayer.modelId) {
@@ -81,16 +82,19 @@ export const AIMatch = () => {
 
           // Get current retry count for temperature calculation
           const currentRetryCount = retryCount;
+          const moveStartTime = Date.now();
 
-          // Get the AI move directly without delay
+          // Get the AI move with proper timing
           await getAIMove(
             currentPlayer.providerId,
             currentPlayer.modelId,
             currentPosition,
             (bestMove) => {
-              console.log(`[AIMatch] AI move received: ${bestMove}`);
-              // Make the move
-              const moveResult = makeMove(bestMove as unknown as MoveInput);
+              const thinkingTime = Date.now() - moveStartTime;
+              console.log(`[AIMatch] AI move received: ${bestMove} (thinking time: ${thinkingTime}ms)`);
+
+              // Make the move - chess.js accepts UCI format strings directly
+              const moveResult = makeMove(bestMove);
 
               // Check if move was successful
               if (!moveResult) {

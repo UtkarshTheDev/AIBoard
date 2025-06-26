@@ -18,7 +18,7 @@ export type MoveInput = {
   from: Square;
   to: Square;
   promotion?: string;
-};
+} | string; // Also accept string moves (SAN, UCI, etc.)
 
 interface ChessState {
   // Game state
