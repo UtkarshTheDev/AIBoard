@@ -1,28 +1,23 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { getApiStockfishService } from '../api-stockfish-service';
+import { getStockfishService } from '../stockfish-service';
 
 export function useApiStockfish() {
   const [isReady, setIsReady] = useState(false);
-  const [service] = useState(getApiStockfishService());
+  const [service] = useState(getStockfishService());
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    
-    // Check if Stockfish API is available
+
+    // Check if Stockfish service is available
     const checkStockfish = async () => {
       setIsChecking(true);
       try {
-        const response = await fetch('/api/stockfish');
-        if (!response.ok) {
-          throw new Error('Stockfish API not available');
-        }
-        
-        const data = await response.json();
+        const ready = await service.isReady();
         if (mounted) {
-          setIsReady(data.stockfishAvailable === true);
+          setIsReady(ready);
         }
       } catch (error) {
         console.error('Error checking Stockfish availability:', error);
@@ -35,15 +30,23 @@ export function useApiStockfish() {
         }
       }
     };
-    
+
     checkStockfish();
-    
+
+    // Recheck periodically if not ready
+    const interval = setInterval(() => {
+      if (!isReady && mounted) {
+        checkStockfish();
+      }
+    }, 2000);
+
     return () => {
       mounted = false;
+      clearInterval(interval);
       // Stop any ongoing analysis when component unmounts
       service.stop();
     };
-  }, [service]);
+  }, [service, isReady]);
 
   return { 
     isStockfishReady: isReady,

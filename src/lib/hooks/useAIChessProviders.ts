@@ -1,9 +1,9 @@
 "use client"
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { AIChessProvider, AIRequestOptions } from '@/types/ai-chess-provider';
 import { AIChessProviderRegistry } from '@/lib/ai-chess/provider-registry';
 import { FallbackManager } from '@/lib/ai-chess/fallback-manager';
-import { useApiStockfish } from './useApiStockfish';
+
 import { toast } from 'sonner';
 
 // Track active requests globally to prevent duplicate calls
@@ -12,27 +12,18 @@ const activeRequests = new Map<string, Promise<any>>();
 export const useAIChessProviders = () => {
   const [providers, setProviders] = useState<AIChessProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { stockfishService } = useApiStockfish();
-  
+
   // Initialize providers
   useEffect(() => {
     const registry = AIChessProviderRegistry.getInstance();
     setProviders(registry.getAllProviders());
     setIsLoading(false);
 
-    // Make stockfish service available globally for the provider
-    if (typeof window !== 'undefined' && stockfishService) {
-      window.__stockfishService = stockfishService;
-    }
-
     // Clean up on unmount
     return () => {
       registry.cleanup();
-      if (typeof window !== 'undefined') {
-        delete window.__stockfishService;
-      }
     };
-  }, [stockfishService]);
+  }, []);
   
   // Set Gemini API key
   const setGeminiApiKey = (apiKey: string) => {

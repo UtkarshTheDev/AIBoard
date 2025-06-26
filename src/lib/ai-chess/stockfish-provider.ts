@@ -1,6 +1,6 @@
 import { BaseAIChessProvider } from './base-provider';
 import { AIRequestOptions } from '@/types/ai-chess-provider';
-import { useApiStockfish } from '@/lib/hooks/useApiStockfish';
+import { getStockfishService } from '@/lib/stockfish-service';
 
 /**
  * Stockfish AI provider implementation
@@ -43,31 +43,25 @@ export class StockfishProvider extends BaseAIChessProvider {
    * Get the best move using Stockfish
    */
   async getBestMove(
-    fen: string, 
+    fen: string,
     callback: (bestMove: string) => void,
     options?: AIRequestOptions
   ): Promise<void> {
     // Get the model ID or use a default
     const modelId = options?.modelId || 'stockfish-level-10';
-    
+
     // Extract the level from the model ID
-    let level = 10; // Default level
+    let depth = 10; // Default depth
     const match = modelId.match(/stockfish-level-(\d+)/);
     if (match && match[1]) {
-      level = parseInt(match[1], 10);
+      depth = parseInt(match[1], 10);
     }
-    
-    // Use the API Stockfish service
-    // Note: This is a workaround since we can't directly access the hook here
-    // In a real implementation, we would use a service directly
-    const stockfishService = window.__stockfishService;
-    
-    if (!stockfishService) {
-      throw new Error('Stockfish service not available');
-    }
-    
+
+    // Use the client-side Stockfish service
+    const stockfishService = getStockfishService();
+
     try {
-      await stockfishService.getBestMove(fen, level, callback);
+      await stockfishService.getBestMove(fen, callback, depth);
     } catch (error) {
       console.error('Error getting best move from Stockfish:', error);
       throw error;
@@ -78,15 +72,8 @@ export class StockfishProvider extends BaseAIChessProvider {
    * Check if Stockfish is available
    */
   async isReady(): Promise<boolean> {
-    // We need to check if the Stockfish service is available
-    // This is a workaround since we can't directly access the hook here
-    const stockfishService = window.__stockfishService;
-    
-    if (!stockfishService) {
-      return false;
-    }
-    
     try {
+      const stockfishService = getStockfishService();
       return await stockfishService.isReady();
     } catch (error) {
       console.error('Error checking Stockfish availability:', error);
@@ -94,10 +81,3 @@ export class StockfishProvider extends BaseAIChessProvider {
     }
   }
 }
-
-// Add global type for stockfish service
-declare global {
-  interface Window {
-    __stockfishService?: any;
-  }
-} 
