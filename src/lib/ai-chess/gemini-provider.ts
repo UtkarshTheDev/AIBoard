@@ -6,6 +6,12 @@ import { MoveValidator } from './move-validator';
 
 // Model-specific rate limiting settings - OPTIMIZED FOR SPEED
 const MODEL_RATE_LIMITS = {
+  'gemini-2.5-pro': {
+    MAX_REQUESTS_PER_MINUTE: 10, // 10 RPM for Gemini 2.5 Pro
+    COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
+    BURST_LIMIT: 10, // Allow full RPM in burst
+    BURST_WINDOW_MS: 60000, // 60 second burst window
+  },
   'gemini-2.5-flash': {
     MAX_REQUESTS_PER_MINUTE: 10, // 10 RPM for Gemini 2.5 Flash
     COOLDOWN_MS: 0, // NO ARTIFICIAL DELAY - let API handle rate limiting
@@ -115,6 +121,12 @@ export class GeminiProvider extends BaseAIChessProvider {
           name: 'Gemini 2.5 Flash',
           description: 'Latest model with 10 RPM on free tier',
           strength: 'Very Advanced'
+        },
+        {
+          id: 'gemini-2.5-pro',
+          name: 'Gemini 2.5 Pro',
+          description: 'Most advanced model with 10 RPM on free tier',
+          strength: 'Professional'
         }
       ]
     );
