@@ -6,29 +6,34 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { KeyIcon, SaveIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
 
 interface APIConfigCardProps {
-  onApiKeyUpdate: (apiKey: string) => void;
+  onApiKeyUpdate?: (apiKey: string) => void;
 }
 
 export const APIConfigCard: React.FC<APIConfigCardProps> = ({
   onApiKeyUpdate
 }) => {
-  const [apiKey, setApiKey] = useState('');
+  const { geminiApiKey, setGeminiApiKey } = useAIChessProviders();
+  const [localApiKey, setLocalApiKey] = useState('');
 
-  // Load stored API key on mount
+  // Sync local state with global state
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('gemini_api_key');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-    }
-  }, []);
+    setLocalApiKey(geminiApiKey);
+  }, [geminiApiKey]);
 
   // Handle API key update
   const handleSave = () => {
     try {
-      onApiKeyUpdate(apiKey);
-      localStorage.setItem('gemini_api_key', apiKey);
+      // Update through the centralized hook
+      setGeminiApiKey(localApiKey);
+
+      // Call the optional callback for backward compatibility
+      if (onApiKeyUpdate) {
+        onApiKeyUpdate(localApiKey);
+      }
+
       toast.success('API key updated successfully');
     } catch (error) {
       toast.error('Failed to update API key');
@@ -52,9 +57,9 @@ export const APIConfigCard: React.FC<APIConfigCardProps> = ({
             <Input
               id="gemini-api-key"
               type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your Google AI API key"
+              value={localApiKey}
+              onChange={(e) => setLocalApiKey(e.target.value)}
+              placeholder={geminiApiKey ? "API key is set" : "Enter your Google AI API key"}
               className="flex-1"
             />
             <Button onClick={handleSave}>

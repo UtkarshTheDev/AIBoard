@@ -179,10 +179,7 @@ export const ChessBoard = () => {
   // AI match controller (no UI, just logic)
   const [showSettings, setShowSettings] = useState(false);
 
-  // Handle API key update
-  const handleApiKeyUpdate = (apiKey: string) => {
-    setGeminiApiKey(apiKey);
-  };
+  // Note: API key updates are now handled centrally through useAIChessProviders
 
   // Handle model toggle
   const handleModelToggle = (providerId: string, modelId: string, enabled: boolean) => {
@@ -272,9 +269,7 @@ export const ChessBoard = () => {
 
             {/* Right side - API Config + Available Models */}
             <div className="flex flex-col gap-6 h-fit">
-              <APIConfigCard
-                onApiKeyUpdate={handleApiKeyUpdate}
-              />
+              <APIConfigCard />
               <AvailableModelsCard
                 providers={providers}
                 onModelToggle={handleModelToggle}

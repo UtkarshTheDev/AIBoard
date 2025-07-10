@@ -12,32 +12,28 @@ import { Trash2Icon, SaveIcon, KeyIcon, BrainIcon } from 'lucide-react';
 
 export const AIModelManager = () => {
   // Get providers and models
-  const { 
-    providers, 
-    isLoading, 
-    setGeminiApiKey, 
-    addCustomModel, 
+  const {
+    providers,
+    isLoading,
+    geminiApiKey,
+    setGeminiApiKey,
+    addCustomModel,
     updateModel,
     deleteModel
   } = useAIChessProviders();
-  
-  // State for API key
-  const [apiKey, setApiKey] = useState('');
-  
-  // Load stored API key on mount
+
+  // State for local API key input
+  const [localApiKey, setLocalApiKey] = useState('');
+
+  // Sync local state with global state
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('gemini_api_key');
-    if (storedApiKey) {
-      setApiKey(storedApiKey);
-      setGeminiApiKey(storedApiKey);
-    }
-  }, [setGeminiApiKey]);
+    setLocalApiKey(geminiApiKey);
+  }, [geminiApiKey]);
   
   // Handle API key update
   const handleApiKeyUpdate = () => {
     try {
-      setGeminiApiKey(apiKey);
-      localStorage.setItem('gemini_api_key', apiKey);
+      setGeminiApiKey(localApiKey);
       toast.success('API key updated successfully');
     } catch (error) {
       toast.error('Failed to update API key');
@@ -84,9 +80,9 @@ export const AIModelManager = () => {
               <Input
                 id="gemini-api-key"
                 type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your Google AI API key"
+                value={localApiKey}
+                onChange={(e) => setLocalApiKey(e.target.value)}
+                placeholder={geminiApiKey ? "API key is set" : "Enter your Google AI API key"}
                 className="flex-1"
               />
               <Button onClick={handleApiKeyUpdate}>

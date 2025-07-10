@@ -20,22 +20,13 @@ export const AIPlayerConfig = () => {
     resetGame
   } = useChessStore();
   
-  const { 
-    providers, 
-    isLoading, 
-    setGeminiApiKey, 
-    getAllModels 
+  const {
+    providers,
+    isLoading,
+    isGeminiApiKeySet,
+    setGeminiApiKey,
+    getAllModels
   } = useAIChessProviders();
-  
-  const [apiKeySet, setApiKeySet] = useState(false);
-  
-  // Check if API key is set on mount
-  useEffect(() => {
-    const storedApiKey = localStorage.getItem('gemini_api_key');
-    if (storedApiKey) {
-      setApiKeySet(true);
-    }
-  }, []);
   
   // Get all available models
   const allModels = getAllModels();
@@ -52,7 +43,7 @@ export const AIPlayerConfig = () => {
       });
     } else {
       // Check if API key is set for Gemini
-      if (!apiKeySet) {
+      if (!isGeminiApiKeySet) {
         toast.error("Please set your Gemini API key first");
         return;
       }
@@ -103,7 +94,7 @@ export const AIPlayerConfig = () => {
   // Handle AI match toggle
   const handleAIMatchToggle = (enabled: boolean) => {
     // Check if API key is set for Gemini when enabling AI match
-    if (enabled && !apiKeySet) {
+    if (enabled && !isGeminiApiKeySet) {
       toast.error("Please set your Gemini API key first");
       return;
     }
@@ -129,7 +120,7 @@ export const AIPlayerConfig = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* API Key Status */}
-        {!apiKeySet && (
+        {!isGeminiApiKeySet && (
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-sm text-yellow-800">
               ⚠️ Gemini API key not set. Please configure it in AI Settings to use AI players.
@@ -150,7 +141,7 @@ export const AIPlayerConfig = () => {
             id="ai-match"
             checked={isAIMatch}
             onCheckedChange={handleAIMatchToggle}
-            disabled={!apiKeySet}
+            disabled={!isGeminiApiKeySet}
           />
         </div>
 

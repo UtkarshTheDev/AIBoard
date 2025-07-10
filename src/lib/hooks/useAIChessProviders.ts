@@ -12,12 +12,21 @@ const activeRequests = new Map<string, Promise<any>>();
 export const useAIChessProviders = () => {
   const [providers, setProviders] = useState<AIChessProvider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [geminiApiKey, setGeminiApiKeyState] = useState<string>('');
+  const [isGeminiApiKeySet, setIsGeminiApiKeySet] = useState<boolean>(false);
 
-  // Initialize providers
+  // Initialize providers and load API key
   useEffect(() => {
     const registry = AIChessProviderRegistry.getInstance();
     setProviders(registry.getAllProviders());
     setIsLoading(false);
+
+    // Load stored API key on mount
+    const storedApiKey = localStorage.getItem('gemini_api_key');
+    if (storedApiKey) {
+      setGeminiApiKeyState(storedApiKey);
+      setIsGeminiApiKeySet(true);
+    }
 
     // Clean up on unmount
     return () => {
@@ -25,14 +34,26 @@ export const useAIChessProviders = () => {
     };
   }, []);
   
-  // Set Gemini API key
+  // Set Gemini API key with state management
   const setGeminiApiKey = (apiKey: string) => {
     const registry = AIChessProviderRegistry.getInstance();
     const geminiProvider = registry.getProvider('gemini');
 
     if (geminiProvider && 'setApiKey' in geminiProvider) {
       (geminiProvider as any).setApiKey(apiKey);
-      console.log('[useAIChessProviders] Set Gemini API key');
+
+      // Update local state
+      setGeminiApiKeyState(apiKey);
+      setIsGeminiApiKeySet(!!apiKey);
+
+      // Store in localStorage
+      if (apiKey) {
+        localStorage.setItem('gemini_api_key', apiKey);
+      } else {
+        localStorage.removeItem('gemini_api_key');
+      }
+
+      console.log('[useAIChessProviders] Set Gemini API key and updated state');
     } else {
       console.error('[useAIChessProviders] Gemini provider not found or does not support setApiKey');
     }
@@ -172,6 +193,8 @@ export const useAIChessProviders = () => {
   return {
     providers,
     isLoading,
+    geminiApiKey,
+    isGeminiApiKeySet,
     setGeminiApiKey,
     getAIMove,
     getAllModels,
