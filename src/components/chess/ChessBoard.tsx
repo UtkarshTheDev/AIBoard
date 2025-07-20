@@ -2,7 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { useChessStore, MoveInput } from '@/lib/store/chess-store';
-import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 
 import { ChessTimer } from './ChessTimer';
 import { MoveHistory } from './MoveHistory';

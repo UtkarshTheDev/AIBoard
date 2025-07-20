@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { useChessStore, Player } from '@/lib/store/chess-store';
-import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';

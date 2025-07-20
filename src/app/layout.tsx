@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { AIChessProvidersProvider } from "@/lib/contexts/AIChessProviderContext";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -30,7 +31,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} dark antialiased font-sans`}
       >
-        {children}
+        <AIChessProvidersProvider>
+          {children}
+        </AIChessProvidersProvider>
         <Toaster position="top-right" />
       </body>
     </html>

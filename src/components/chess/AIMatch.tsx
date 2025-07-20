@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react';
 import { MoveInput, useChessStore } from '@/lib/store/chess-store';
-import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 import { AIChessErrorHandler, AIChessError } from '@/lib/ai-chess/error-handler';
 
 // Constants for error handling

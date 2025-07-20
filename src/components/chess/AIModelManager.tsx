@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

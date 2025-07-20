@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { KeyIcon, SaveIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAIChessProviders } from '@/lib/hooks/useAIChessProviders';
+import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 
 interface APIConfigCardProps {
   onApiKeyUpdate?: (apiKey: string) => void;
