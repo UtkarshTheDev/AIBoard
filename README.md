@@ -62,7 +62,7 @@ AI Chess Board is a modern, web-based chess platform that brings together cuttin
 
 1. **Clone & Install**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/UtkarshTheDev/AIBoard.git
    cd ai-chess-board
    npm install
    # or with bun
@@ -270,7 +270,7 @@ Please feel free to open issues and pull requests.
 ### Development Setup
 ```bash
 # Clone the repo
-git clone <your-repo-url>
+git clone https://github.com/UtkarshTheDev/AIBoard.git
 cd ai-chess-board
 
 # Install dependencies
