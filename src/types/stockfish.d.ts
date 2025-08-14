@@ -10,7 +10,7 @@ declare module 'stockfish.wasm' {
 }
 
 // Global Stockfish for Web Worker
-declare var Stockfish: () => Promise<{
+declare const Stockfish: () => Promise<{
   postMessage(message: string): void;
   onmessage: ((line: string) => void) | null;
   terminate(): void;

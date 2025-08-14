@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { AIChessModel } from '@/types/ai-chess-provider';
 
 interface CustomModelCardProps {
   providers: Array<{
@@ -21,7 +22,7 @@ interface CustomModelCardProps {
       custom?: boolean;
     }>;
   }>;
-  onAddModel: (providerId: string, model: any) => boolean;
+  onAddModel: (providerId: string, model: AIChessModel) => boolean;
 }
 
 export const CustomModelCard: React.FC<CustomModelCardProps> = ({ providers, onAddModel }) => {
@@ -89,17 +90,19 @@ export const CustomModelCard: React.FC<CustomModelCardProps> = ({ providers, onA
         <div>
           <Label htmlFor="provider-select">Provider</Label>
           <Select
-            id="provider-select"
             value={selectedProvider}
             onValueChange={setSelectedProvider}
-            className="w-full mt-1"
           >
-            <option value="">Select a provider</option>
-            {providers.map(provider => (
-              <option key={provider.id} value={provider.id}>
-                {provider.name}
-              </option>
-            ))}
+            <SelectTrigger className="w-full mt-1" id="provider-select">
+              <SelectValue placeholder="Select a provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map(provider => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  {provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
 

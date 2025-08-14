@@ -8,12 +8,19 @@ import { AIChessErrorHandler, AIChessErrorType } from '@/lib/ai-chess/error-hand
 import { FallbackManager } from '@/lib/ai-chess/fallback-manager';
 import { toast } from 'sonner';
 
+// Define interface for test results
+interface TestResult {
+  test: string;
+  status: 'PASS' | 'FAIL';
+  details: string;
+}
+
 /**
  * Component to test and validate AI chess system fixes
  */
 export const AIChessValidator = () => {
   const { getAIMove, providers } = useAIChessProviders();
-  const [testResults, setTestResults] = useState<any[]>([]);
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
   // Test positions for validation
@@ -38,7 +45,7 @@ export const AIChessValidator = () => {
   const runValidationTests = async () => {
     setIsRunning(true);
     setTestResults([]);
-    const results: any[] = [];
+    const results: TestResult[] = [];
 
     try {
       // Test 1: Move Validator

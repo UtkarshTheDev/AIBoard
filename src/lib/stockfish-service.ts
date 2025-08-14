@@ -1,8 +1,16 @@
 "use client"
 
-import { StockfishAnalysis, StockfishOptions } from './hooks/useStockfish';
 import { createStockfishWorker, isStockfishSupported } from './worker-utils';
 import { MoveValidator } from './ai-chess/move-validator';
+
+// Define interface for worker message data
+interface WorkerMessageData {
+  type: 'ready' | 'analysis' | 'bestmove' | 'error';
+  ready?: boolean;
+  evaluation?: number;
+  bestMove?: string;
+  error?: string;
+}
 
 export interface StockfishServiceInterface {
   isReady(): Promise<boolean>;
@@ -75,18 +83,18 @@ export class ClientStockfishService implements StockfishServiceInterface {
     }
   }
 
-  private handleWorkerMessage(data: any): void {
+  private handleWorkerMessage(data: WorkerMessageData): void {
     const { type, ...payload } = data;
 
     switch (type) {
       case 'ready':
-        this.isEngineReady = payload.ready;
+        this.isEngineReady = payload.ready ?? false;
         break;
 
       case 'analysis':
         if (this.currentAnalysis) {
           const { evaluation, bestMove } = payload;
-          this.currentAnalysis.callback(evaluation, bestMove || '');
+          this.currentAnalysis.callback(evaluation ?? 0, bestMove || '');
         }
         break;
 

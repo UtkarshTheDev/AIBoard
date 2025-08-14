@@ -1,6 +1,6 @@
 "use client"
-import React, { useState, useEffect } from 'react';
-import { useChessStore, Player } from '@/lib/store/chess-store';
+import React from 'react';
+import { useChessStore } from '@/lib/store/chess-store';
 import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -23,13 +23,8 @@ export const AIPlayerConfig = () => {
   const {
     providers,
     isLoading,
-    isGeminiApiKeySet,
-    setGeminiApiKey,
-    getAllModels
+    isGeminiApiKeySet
   } = useAIChessProviders();
-  
-  // Get all available models
-  const allModels = getAllModels();
   
   // Handle player type change
   const handlePlayerTypeChange = (color: 'white' | 'black', type: 'human' | 'ai') => {

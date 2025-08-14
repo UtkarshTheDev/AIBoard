@@ -213,7 +213,11 @@ export class FallbackManager {
     lastFailure: number;
     disabled: boolean;
   }> {
-    const status: Record<string, any> = {};
+    const status: Record<string, {
+      failures: number;
+      lastFailure: number;
+      disabled: boolean;
+    }> = {};
     
     const registry = AIChessProviderRegistry.getInstance();
     const allProviders = registry.getAllProviders();

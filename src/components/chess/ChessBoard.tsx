@@ -1,5 +1,5 @@
 "use client"
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Chessboard } from 'react-chessboard';
 import { useChessStore, MoveInput } from '@/lib/store/chess-store';
 import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
@@ -9,7 +9,6 @@ import { MoveHistory } from './MoveHistory';
 import { GameStatus } from './GameStatus';
 import { StockfishAnalysis } from './StockfishAnalysis';
 import { AIPlayerConfig } from './AIPlayerConfig';
-import { AIModelManager } from './AIModelManager';
 import { AIMatch } from './AIMatch';
 import { CustomModelCard } from './CustomModelCard';
 import { APIConfigCard } from './APIConfigCard';
@@ -28,14 +27,13 @@ interface SquareStyles {
 }
 
 export const ChessBoard = () => {
-  const { 
-    game, 
-    currentPosition, 
-    makeMove, 
+  const {
+    game,
+    currentPosition,
+    makeMove,
     isGameOver,
     isTimerRunning,
     startTimer,
-    isAIMatch,
     isAIGameStarted,
     startAIGame,
     stopAIGame
@@ -43,7 +41,6 @@ export const ChessBoard = () => {
 
   const {
     providers,
-    setGeminiApiKey,
     addCustomModel,
     updateModel,
     deleteModel
@@ -116,7 +113,7 @@ export const ChessBoard = () => {
         if (result) {
           return;
         }
-      } catch (e) {
+      } catch {
         // Invalid move
       }
     }
@@ -159,7 +156,7 @@ export const ChessBoard = () => {
       setOptionSquares({});
       
       return result;
-    } catch (e) {
+    } catch {
       return false;
     }
   };

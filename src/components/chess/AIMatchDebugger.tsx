@@ -6,12 +6,44 @@ import { FallbackManager } from '@/lib/ai-chess/fallback-manager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Define interfaces for debug information
+interface GeminiQueueStatus {
+  queueLength?: number;
+  isProcessing?: boolean;
+  activeRequests?: number;
+  requestCount?: number;
+  burstCount?: number;
+  currentBackoffDelay?: number;
+  consecutiveFailures?: number;
+}
+
+interface ProviderStatus {
+  failures: number;
+  disabled: boolean;
+  lastFailure: number;
+}
+
+interface DebugInfo {
+  timestamp?: string;
+  geminiQueue?: GeminiQueueStatus;
+  providerStatus?: Record<string, ProviderStatus>;
+  fallbackManager?: {
+    available: boolean;
+  };
+}
+
+// Define interface for Gemini provider with queue methods
+interface GeminiProviderWithQueue {
+  getQueueStatus?: () => GeminiQueueStatus;
+  clearQueue?: () => void;
+}
+
 /**
  * Debug component for monitoring AI chess system health
  */
 export const AIMatchDebugger = () => {
   const { getProviderStatus, resetProviderStates } = useAIChessProviders();
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
   const [isVisible, setIsVisible] = useState(false);
 
   // Update debug info every 2 seconds
@@ -23,7 +55,7 @@ export const AIMatchDebugger = () => {
       const fallbackManager = FallbackManager.getInstance();
       
       // Get Gemini provider status
-      const geminiProvider = registry.getProvider('gemini') as any;
+      const geminiProvider = registry.getProvider('gemini') as GeminiProviderWithQueue;
       const geminiStatus = geminiProvider?.getQueueStatus?.() || {};
       
       // Get provider status from fallback manager
@@ -105,7 +137,7 @@ export const AIMatchDebugger = () => {
           {/* Provider Status */}
           <div>
             <h4 className="font-semibold text-secondary">Provider Status</h4>
-            {Object.entries(debugInfo.providerStatus || {}).map(([providerId, status]: [string, any]) => (
+            {Object.entries(debugInfo.providerStatus || {}).map(([providerId, status]: [string, ProviderStatus]) => (
               <div key={providerId} className="mb-2">
                 <div className="font-medium text-foreground">{providerId}</div>
                 <div className="grid grid-cols-2 gap-1 text-xs ml-2 text-foreground">
@@ -146,7 +178,7 @@ export const AIMatchDebugger = () => {
               size="sm"
               onClick={() => {
                 const registry = AIChessProviderRegistry.getInstance();
-                const geminiProvider = registry.getProvider('gemini') as any;
+                const geminiProvider = registry.getProvider('gemini') as GeminiProviderWithQueue;
                 if (geminiProvider?.clearQueue) {
                   geminiProvider.clearQueue();
                 }

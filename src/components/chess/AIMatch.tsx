@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react';
-import { MoveInput, useChessStore } from '@/lib/store/chess-store';
+import { useChessStore } from '@/lib/store/chess-store';
 import { useAIChessProviders } from '@/lib/contexts/AIChessProviderContext';
 import { AIChessErrorHandler, AIChessError } from '@/lib/ai-chess/error-handler';
 
@@ -24,7 +24,7 @@ export const AIMatch = () => {
   
   const { getAIMove } = useAIChessProviders();
   const [retryCount, setRetryCount] = useState(0);
-  const [errorHistory, setErrorHistory] = useState<AIChessError[]>([]);
+  const [, setErrorHistory] = useState<AIChessError[]>([]);
   
   // Track the current player's turn
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
@@ -208,8 +208,8 @@ export const AIMatch = () => {
     getAIMove,
     setIsAIThinking,
     currentPlayerId,
-    isAIGameStarted
-    // Removed retryCount from dependencies to prevent infinite loop
+    isAIGameStarted,
+    retryCount
   ]);
   
   // Don't render anything, this is just a controller component

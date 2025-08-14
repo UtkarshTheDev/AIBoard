@@ -1,4 +1,4 @@
-import { AIChessProvider } from '@/types/ai-chess-provider';
+import { AIChessProvider, AIChessModel } from '@/types/ai-chess-provider';
 import { GeminiProvider } from './gemini-provider';
 import { StockfishProvider } from './stockfish-provider';
 
@@ -60,7 +60,7 @@ export class AIChessProviderRegistry {
    * Get all available models from all providers
    */
   public getAllModels() {
-    const allModels: { providerId: string; model: any }[] = [];
+    const allModels: { providerId: string; model: AIChessModel }[] = [];
     
     this.providers.forEach((provider, providerId) => {
       provider.getEnabledModels().forEach(model => {

@@ -134,7 +134,7 @@ export const useChessStore = create<ChessState>((set, get) => ({
     
     try {
       // Try to make the move
-      const moveResult = game.move(move);
+      game.move(move);
       
       // Get the new position
       const newPosition = game.fen();

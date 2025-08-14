@@ -174,12 +174,12 @@ export function useStockfish(): UseStockfishReturn {
       }
 
       // Set up analysis callback
-      analysisCallbackRef.current = (analysis: StockfishAnalysis) => {
+      analysisCallbackRef.current = () => {
         // Analysis updates are handled in the message handler
       };
 
       // Set up completion callback
-      bestMoveCallbackRef.current = (bestMove: string | null) => {
+      bestMoveCallbackRef.current = () => {
         analysisCallbackRef.current = null;
         bestMoveCallbackRef.current = null;
         resolve();

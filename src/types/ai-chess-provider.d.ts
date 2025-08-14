@@ -28,7 +28,7 @@ export interface AIRequestOptions {
   moveHistory?: string[]; // PGN format moves for context
   gamePhase?: 'opening' | 'middlegame' | 'endgame';
   isImportantPosition?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

@@ -2,7 +2,7 @@ import React from 'react';
 import { useChessStore } from '@/lib/store/chess-store';
 
 export const GameStatus = () => {
-  const { isGameOver, gameResult, game } = useChessStore();
+  const { isGameOver, result, game } = useChessStore();
   
   const getTurnIndicator = () => {
     if (isGameOver) return null;
@@ -26,7 +26,7 @@ export const GameStatus = () => {
       return null;
     }
     
-    return <div className="text-blue-600 font-bold">{gameResult}</div>;
+    return <div className="text-blue-600 font-bold">{result}</div>;
   };
   
   return (

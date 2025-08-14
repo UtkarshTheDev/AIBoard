@@ -88,7 +88,7 @@ export class MoveValidator {
             console.log(`[MoveValidator] Converted algebraic ${move} to UCI ${uciMove}`);
             return uciMove;
           }
-        } catch (error) {
+        } catch {
           // Continue to next potential move
           continue;
         }

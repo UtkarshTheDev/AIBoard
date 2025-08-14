@@ -35,7 +35,7 @@ export const AIModelManager = () => {
     try {
       setGeminiApiKey(localApiKey);
       toast.success('API key updated successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update API key');
     }
   };

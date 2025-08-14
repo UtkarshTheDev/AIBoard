@@ -1,13 +1,13 @@
 "use client"
 import { useState, useEffect } from 'react';
-import { AIChessProvider, AIRequestOptions } from '@/types/ai-chess-provider';
+import { AIChessProvider, AIRequestOptions, AIChessModel } from '@/types/ai-chess-provider';
 import { AIChessProviderRegistry } from '@/lib/ai-chess/provider-registry';
 import { FallbackManager } from '@/lib/ai-chess/fallback-manager';
 
 import { toast } from 'sonner';
 
 // Track active requests globally to prevent duplicate calls
-const activeRequests = new Map<string, Promise<any>>();
+const activeRequests = new Map<string, Promise<void>>();
 
 export const useAIChessProviders = () => {
   const [providers, setProviders] = useState<AIChessProvider[]>([]);
@@ -40,7 +40,7 @@ export const useAIChessProviders = () => {
     const geminiProvider = registry.getProvider('gemini');
 
     if (geminiProvider && 'setApiKey' in geminiProvider) {
-      (geminiProvider as any).setApiKey(apiKey);
+      (geminiProvider as { setApiKey: (key: string) => void }).setApiKey(apiKey);
 
       // Update local state
       setGeminiApiKeyState(apiKey);
@@ -115,7 +115,7 @@ export const useAIChessProviders = () => {
   };
   
   // Add a custom model
-  const addCustomModel = (providerId: string, model: any) => {
+  const addCustomModel = (providerId: string, model: AIChessModel) => {
     const registry = AIChessProviderRegistry.getInstance();
     const provider = registry.getProvider(providerId);
     
@@ -136,7 +136,7 @@ export const useAIChessProviders = () => {
   };
   
   // Update a model
-  const updateModel = (providerId: string, modelId: string, updates: any) => {
+  const updateModel = (providerId: string, modelId: string, updates: Partial<AIChessModel>) => {
     const registry = AIChessProviderRegistry.getInstance();
     const provider = registry.getProvider(providerId);
     

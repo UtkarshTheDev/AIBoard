@@ -50,8 +50,8 @@ export class AIChessErrorHandler {
   /**
    * Classify an error and return structured error information
    */
-  static classifyError(error: any, providerId: string): AIChessError {
-    const errorMessage = error?.message || String(error);
+  static classifyError(error: Error | unknown, providerId: string): AIChessError {
+    const errorMessage = (error instanceof Error ? error.message : String(error));
     const errorString = errorMessage.toLowerCase();
 
     // Rate limiting errors
@@ -62,7 +62,7 @@ export class AIChessErrorHandler {
         providerId,
         true,
         0, // NO DELAY - immediate fallback
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -74,7 +74,7 @@ export class AIChessErrorHandler {
         providerId,
         false,
         0,
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -85,7 +85,7 @@ export class AIChessErrorHandler {
         providerId,
         false,
         0,
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -97,7 +97,7 @@ export class AIChessErrorHandler {
         providerId,
         true,
         0, // NO DELAY - immediate fallback
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -109,7 +109,7 @@ export class AIChessErrorHandler {
         providerId,
         true,
         0, // NO DELAY - immediate fallback
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -121,7 +121,7 @@ export class AIChessErrorHandler {
         providerId,
         true,
         0, // NO DELAY - immediate fallback
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -133,7 +133,7 @@ export class AIChessErrorHandler {
         providerId,
         true,
         0, // NO DELAY - immediate retry
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -145,7 +145,7 @@ export class AIChessErrorHandler {
         providerId,
         false,
         0,
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
     }
 
@@ -156,14 +156,14 @@ export class AIChessErrorHandler {
       providerId,
       true,
       0, // NO DELAY - immediate retry/fallback
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
   }
 
   /**
    * Handle an error with appropriate user feedback and recovery strategy
    */
-  static handleError(error: any, providerId: string, context: string = ''): {
+  static handleError(error: Error | unknown, providerId: string, context: string = ''): {
     shouldRetry: boolean;
     retryDelay: number;
     shouldFallback: boolean;

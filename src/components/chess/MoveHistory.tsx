@@ -1,10 +1,11 @@
 import React from 'react';
+import { Chess } from 'chess.js';
 import { useChessStore } from '@/lib/store/chess-store';
 import { Button } from '@/components/ui/button';
 import { ChevronLeftIcon, ChevronRightIcon, RotateCcwIcon } from 'lucide-react';
 
 export const MoveHistory = () => {
-  const { history, historyIndex, goToMove, resetGame } = useChessStore();
+  const { history, historyIndex, goToMove, resetGame, evaluations } = useChessStore();
 
   return (
     <div className="flex flex-col gap-4 w-full font-sans">
@@ -55,21 +56,55 @@ export const MoveHistory = () => {
             </tr>
           </thead>
           <tbody>
-            {history.map((move, index) => (
-              <tr
-                key={index}
-                className={`cursor-pointer hover:bg-accent/50 hover:text-accent-foreground transition-colors ${
-                  index === historyIndex ? 'bg-primary/20 text-primary-foreground' : 'text-card-foreground'
-                }`}
-                onClick={() => goToMove(index)}
-              >
-                <td className="py-1 px-2 font-mono">{index}</td>
-                <td className="py-1 px-2 font-mono">{move.move}</td>
-                <td className="py-1 px-2 text-right font-mono">
-                  {move.evaluation !== undefined ? move.evaluation.toFixed(2) : '-'}
-                </td>
-              </tr>
-            ))}
+            {history.map((fen, index) => {
+              // Get move notation
+              let moveNotation = 'Start';
+              if (index > 0) {
+                // Create a temporary game to get the move history
+                const tempGame = new Chess();
+                tempGame.load(history[0]); // Load starting position
+
+                // Get all moves that lead to the current position
+                const moveHistory = [];
+                for (let i = 1; i <= index; i++) {
+                  const moves = tempGame.moves({ verbose: true });
+                  // Find the move that results in history[i]
+                  const targetMove = moves.find(move => {
+                    const testGame = new Chess(tempGame.fen());
+                    testGame.move(move);
+                    return testGame.fen() === history[i];
+                  });
+
+                  if (targetMove) {
+                    moveHistory.push(targetMove.san);
+                    tempGame.move(targetMove);
+                  } else {
+                    moveHistory.push(`Move ${i}`);
+                    break;
+                  }
+                }
+
+                moveNotation = moveHistory[index - 1] || `Move ${index}`;
+              }
+
+              const evaluation = evaluations[index];
+
+              return (
+                <tr
+                  key={index}
+                  className={`cursor-pointer hover:bg-accent/50 hover:text-accent-foreground transition-colors ${
+                    index === historyIndex ? 'bg-primary/20 text-primary-foreground' : 'text-card-foreground'
+                  }`}
+                  onClick={() => goToMove(index)}
+                >
+                  <td className="py-1 px-2 font-mono">{index}</td>
+                  <td className="py-1 px-2 font-mono">{moveNotation}</td>
+                  <td className="py-1 px-2 text-right font-mono">
+                    {evaluation !== null && evaluation !== undefined ? evaluation.toFixed(2) : '-'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

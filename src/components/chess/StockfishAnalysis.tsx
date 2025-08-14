@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useChessStore } from '@/lib/store/chess-store';
 import { useStockfish } from '@/lib/hooks/useStockfish';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ export const StockfishAnalysis = () => {
   const [analysisDepth, setAnalysisDepth] = useState(15);
   const [analysisTime, setAnalysisTime] = useState(5000);
 
-  const handleAnalyzePosition = async () => {
+  const handleAnalyzePosition = useCallback(async () => {
     if (isAnalyzing || !isStockfishReady) return;
 
     setShowFullError(false);
@@ -35,7 +35,7 @@ export const StockfishAnalysis = () => {
     } catch (error) {
       console.error('Analysis failed:', error);
     }
-  };
+  }, [isAnalyzing, isStockfishReady, clearError, analyzePosition, currentPosition, analysisDepth, analysisTime]);
 
   // Auto-analyze when position changes
   useEffect(() => {
@@ -46,7 +46,7 @@ export const StockfishAnalysis = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [currentPosition, autoAnalyze, isStockfishReady, isAnalyzing]);
+  }, [currentPosition, autoAnalyze, isStockfishReady, isAnalyzing, handleAnalyzePosition]);
 
   // Update evaluation when analysis completes
   useEffect(() => {

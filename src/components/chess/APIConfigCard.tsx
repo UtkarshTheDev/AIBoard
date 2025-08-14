@@ -35,7 +35,7 @@ export const APIConfigCard: React.FC<APIConfigCardProps> = ({
       }
 
       toast.success('API key updated successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to update API key');
     }
   };

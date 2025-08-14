@@ -353,7 +353,10 @@ export class GeminiProvider extends BaseAIChessProvider {
   /**
    * INTELLIGENT RETRY WITH FEEDBACK - Generate enhanced prompt
    */
-  private generateEnhancedPrompt(request: QueuedRequest): any[] {
+  private generateEnhancedPrompt(request: QueuedRequest): Array<{
+    role: 'user' | 'model';
+    parts: Array<{ text: string }>;
+  }> {
     const gameContext = this.analyzeGameContext(request.fen, request.options);
     const systemMessage = this.generateSystemMessage(gameContext);
 
@@ -621,7 +624,7 @@ export class GeminiProvider extends BaseAIChessProvider {
   /**
    * Generate move history in PGN format for context
    */
-  private generateMoveHistory(fen: string, maxMoves: number = 10): string[] {
+  private generateMoveHistory(): string[] {
     // This would ideally come from the chess store, but for now we'll return empty
     // In a full implementation, this would be passed from the calling component
     return [];
