@@ -1,0 +1,7 @@
+{
+  "build": {
+    "env": {
+      "LIGHTNINGCSS_FORCE_WASM": "1"
+    }
+  }
+}
