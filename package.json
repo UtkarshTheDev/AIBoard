@@ -20,7 +20,7 @@
     "lightningcss-wasm": "^1.27.0",
     "lucide-react": "^0.522.0",
     "mime": "^4.0.7",
-    "next": "^15.5.2",
+    "next": "15.5.9",
     "react": "^19.0.0",
     "react-chessboard": "^4.7.3",
     "react-dom": "^19.0.0",
